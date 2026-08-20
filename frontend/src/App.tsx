@@ -1,0 +1,31 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Layout } from "./components/Layout";
+import { HomePage } from "./pages/HomePage";
+import { ShopPage } from "./pages/ShopPage";
+import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { SellDevicePage } from "./pages/SellDevicePage";
+import { AboutPage } from "./pages/AboutPage";
+import { ContactPage } from "./pages/ContactPage";
+import { HelpCenterPage } from "./pages/HelpCenterPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
+import { ScrollToTop } from "./components/ScrollToTop";
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <ScrollToTop />
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<HomePage />} />
+          <Route path="shop" element={<ShopPage />} />
+          <Route path="product/:id" element={<ProductDetailPage />} />
+          <Route path="sell" element={<SellDevicePage />} />
+          <Route path="about" element={<AboutPage />} />
+          <Route path="contact" element={<ContactPage />} />
+          <Route path="help" element={<HelpCenterPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
+}

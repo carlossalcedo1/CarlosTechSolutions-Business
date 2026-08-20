@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/*
+  Design tokens for the site. Tailwind v4 reads @theme and turns each
+  variable into a utility (e.g. --color-brand becomes `bg-brand`, `text-brand`).
+  Keeping the palette here means every page pulls from the same source
+  instead of hardcoded hex values scattered around.
+*/
+@theme {
+  --color-brand: #1d4ed8;
+  --color-brand-dark: #1e3a8a;
+  --color-ink: #111827;
+  --color-muted: #6b7280;
+  --color-hairline: #e5e7eb;
+  --color-surface: #f9fafb;
+
+  --font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  color: var(--color-ink);
+  background: #ffffff;
+  font-family: var(--font-sans);
+}
