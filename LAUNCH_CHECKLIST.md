@@ -101,21 +101,11 @@ form submit → POST /api/contact → server holds the key → Resend → your i
       catches most of it; a per-IP limit catches the rest
 - [ ] Sanity-check: no HTML injection from form input into the email body
 
-### Marketing email (new listings)
-
-Different from the above, and legally so.
-
-- [ ] Create a Resend Audience; `/api/subscribe` adds contacts to it
-- [ ] Double opt-in (confirm by email) — protects your sending reputation from
-      people typing other people's addresses
-- [ ] **Unsubscribe link in every marketing send.** Resend audiences handle
-      this; it is a legal requirement under CAN-SPAM, not a courtesy
-- [ ] **A physical mailing address in every marketing email.** Also legally
-      required. A PO box is fine
-- [ ] Decide what triggers a send — weekly digest beats per-item, which trains
-      people to ignore you
-- [ ] Watch the free tier: ~3,000/month and ~100/day. 100 subscribers × weekly
-      is comfortable; a daily blast to 200 is not
+> **Marketing email (new-listing digest) moved to Stretch goals** — see the
+> bottom of this file. `/api/subscribe` still needs to exist for Phase 1/4 (the
+> subscribe box has to POST *somewhere* and get a real success state), but it
+> can just record the email for now; the Resend Audience, double opt-in, and
+> actual sends aren't launch-blocking.
 
 ---
 
@@ -235,3 +225,27 @@ All server-side. None of these ever reach the browser.
 - [ ] Back up the sold-state file — the catalog is in git, that file isn't
 - [ ] Uptime monitoring — self-hosted means nobody else notices it's down
 - [ ] A `mark_sold.py` CLI for devices you sell in person, off-site
+
+---
+
+## Stretch goals (post-launch)
+
+Not required to take real money. Do these once the core loop (browse → buy →
+get paid, forms → email) is working and boring.
+
+### Marketing email (new listings)
+
+Different from transactional email, and legally so — don't build this casually.
+
+- [ ] Create a Resend Audience; `/api/subscribe` adds contacts to it for real
+      (Phase 1/4 only needs it to record the email and return success)
+- [ ] Double opt-in (confirm by email) — protects your sending reputation from
+      people typing other people's addresses
+- [ ] **Unsubscribe link in every marketing send.** Resend audiences handle
+      this; it is a legal requirement under CAN-SPAM, not a courtesy
+- [ ] **A physical mailing address in every marketing email.** Also legally
+      required. A PO box is fine
+- [ ] Decide what triggers a send — weekly digest beats per-item, which trains
+      people to ignore you
+- [ ] Watch the free tier: ~3,000/month and ~100/day. 100 subscribers × weekly
+      is comfortable; a daily blast to 200 is not

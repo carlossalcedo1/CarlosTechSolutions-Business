@@ -1,3 +1,11 @@
 pydantic>=2.9
+pydantic-settings>=2.4
+email-validator>=2.2
 Pillow>=10.4
 pillow-heif>=0.18
+
+# API service (Phase 1)
+fastapi>=0.115
+uvicorn[standard]>=0.30
+stripe>=10.12
+resend>=2.4

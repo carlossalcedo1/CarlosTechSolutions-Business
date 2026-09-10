@@ -11,10 +11,9 @@ __pycache__/
 .venv/
 venv/
 
-# Sold-state store (Phase 1) — runtime data, not source
-backend/*.db
-backend/*.sqlite3
-backend/sold_state.json
+# Runtime data (Phase 1) — sold-state store, subscriber list. Not source,
+# and on the server this is a mounted volume anyway (see Phase 5).
+backend/data/
 
 # OS / editor cruft
 .DS_Store
