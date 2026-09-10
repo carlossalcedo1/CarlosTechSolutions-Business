@@ -160,15 +160,22 @@ form submit → POST /api/contact → server holds the key → Resend → your i
 Right now every form fakes success in local state. Each needs to hit the API,
 and each needs the three states it currently doesn't have.
 
-- [ ] `Buy now` → `POST /api/checkout` → redirect to Stripe
-- [ ] Contact / repair / unlock form → `POST /api/contact`
-- [ ] Trade-in stepper → `POST /api/trade-in`
-- [ ] Subscribe box → `POST /api/subscribe`
-- [ ] **Loading, error, and success states for all four.** A form that silently
-      does nothing on a failed request is worse than no form — the customer
-      assumes it sent
-- [ ] Disable submit while in flight so double-clicks don't double-send
-- [ ] `/checkout/success` and `/checkout/cancelled` pages for Stripe's redirects
+- [x] `Buy now` → `POST /api/checkout` → redirect to Stripe
+- [x] Contact / repair / unlock form → `POST /api/contact`
+- [x] Trade-in form → `POST /api/trade-in` — rebuilt as a plain form (name,
+      email, phone, IMEI, condition, unlock status, notes) instead of the old
+      5-step price-estimate wizard, with an Apple-only notice; backend
+      schema changed to match (`imei` + `unlock_status`, dropped the
+      client-side "estimated offer" concept entirely)
+- [x] Subscribe box → `POST /api/subscribe`
+- [x] **Loading, error, and success states for all four.** — `lib/api.ts`
+      centralizes error-message extraction (FastAPI validation arrays vs.
+      plain `detail` strings) so every form shows a real message, not a
+      silent failure
+- [x] Disable submit while in flight so double-clicks don't double-send
+- [x] `/checkout/success` and `/checkout/cancelled` pages for Stripe's redirects
+      — plain confirmation pages, no API calls; the webhook is still the
+      real source of truth, not this page
 
 ---
 

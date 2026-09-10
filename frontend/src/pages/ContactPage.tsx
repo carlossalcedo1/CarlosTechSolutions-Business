@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { INQUIRY_EMAIL, REQUEST_EMAIL, CONTACT_PHONE } from "../lib/constants";
+import { submitContact, ApiError } from "../lib/api";
 
 // Apple's guide to locating an IMEI. Swap this for your own walkthrough
 // once you write one.
@@ -39,17 +40,40 @@ export function ContactPage() {
       : "",
   });
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    // Stage 2 posts this to `/api/contact`, which emails you via Resend.
-    // The repair and IMEI fields go in that payload as their own fields
-    // rather than being glued into the message text.
-    setSent(true);
+    if (submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await submitContact({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        message: form.message,
+        // Only sent when actually relevant, so a general question's email
+        // doesn't show a stray "Repair type: Battery" default.
+        repair_type: isRepair ? form.repairType : undefined,
+        device_brand: isRepair ? form.brand : undefined,
+        imei: isUnlock ? form.imei : undefined,
+      });
+      setSent(true);
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Something went wrong sending this — try again, or reach us directly below.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const heading = isPickup
@@ -188,11 +212,18 @@ export function ContactPage() {
                 />
               </div>
 
+              {error && (
+                <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {error}
+                </p>
+              )}
+
               <button
                 type="submit"
-                className="rounded-full bg-brand px-7 py-3 text-sm font-medium text-white hover:bg-brand-dark"
+                disabled={submitting}
+                className="rounded-full bg-brand px-7 py-3 text-sm font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Send
+                {submitting ? "Sending…" : "Send"}
               </button>
             </form>
           )}

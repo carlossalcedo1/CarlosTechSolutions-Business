@@ -40,13 +40,14 @@ class ContactRequest(_Honeypot):
 
 
 class TradeInRequest(_Honeypot):
+    # Apple-only for now (see SellDevicePage.tsx), so IMEI alone identifies
+    # the device — no separate make/model field.
     name: str = Field(min_length=1, max_length=200)
     email: EmailStr
     phone: str = ""
-    device_brand: str = Field(min_length=1, max_length=100)
-    device_model: str = Field(min_length=1, max_length=200)
-    condition: str = ""
-    imei: str = ""
+    imei: str = Field(min_length=1, max_length=32)
+    condition: str = Field(min_length=1, max_length=50)
+    unlock_status: str = Field(min_length=1, max_length=50)
     notes: str = Field(default="", max_length=5000)
 
 

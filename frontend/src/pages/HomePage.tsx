@@ -6,6 +6,7 @@ import { ProductCard } from "../components/ProductCard";
 import { PlaceholderImage } from "../components/PlaceholderImage";
 import { CleanWayMark } from "../components/CleanWayMark";
 import { ProjectsSection } from "../components/ProjectsSection";
+import { subscribe, ApiError } from "../lib/api";
 
 // Four promises shown in the 2x2 grid. The fourth is an autofilled
 // placeholder — swap in whatever you actually want to promise.
@@ -48,16 +49,28 @@ const sectionHeading =
 export function HomePage() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
   const recentlyListed = [...items]
     .sort((a, b) => (a.dateAdded < b.dateAdded ? 1 : -1))
     .slice(0, 4);
 
-  function handleSubscribe(e: FormEvent) {
+  async function handleSubscribe(e: FormEvent) {
     e.preventDefault();
-    // Stage 2 posts this to the backend / email provider (Resend or
-    // SendGrid per the brief). For now it just confirms locally.
-    setSubscribed(true);
+    if (subscribing) return;
+    setSubscribeError(null);
+    setSubscribing(true);
+    try {
+      await subscribe(email);
+      setSubscribed(true);
+    } catch (err) {
+      setSubscribeError(
+        err instanceof ApiError ? err.message : "Something went wrong — try again in a moment.",
+      );
+    } finally {
+      setSubscribing(false);
+    }
   }
 
   return (
@@ -199,11 +212,15 @@ export function HomePage() {
                 />
                 <button
                   type="submit"
-                  className="w-full rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white hover:opacity-90 sm:w-auto"
+                  disabled={subscribing}
+                  className="w-full rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
                 >
-                  Subscribe
+                  {subscribing ? "Subscribing…" : "Subscribe"}
                 </button>
               </form>
+            )}
+            {subscribeError && (
+              <p className="mt-3 text-sm text-red-700">{subscribeError}</p>
             )}
           </div>
         </div>

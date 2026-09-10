@@ -5,14 +5,36 @@ import { PlaceholderImage } from "../components/PlaceholderImage";
 import { ConditionBadge } from "../components/ConditionBadge";
 import { formatPrice } from "../lib/format";
 import { CONTACT_PHONE } from "../lib/constants";
+import { checkout, ApiError } from "../lib/api";
 
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const item = id ? getItemById(id) : undefined;
-  // Placeholder until POST /api/checkout is wired to Stripe.
-  const [checkoutNote, setCheckoutNote] = useState(false);
+  const [buying, setBuying] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
+
+  async function handleBuyNow() {
+    if (!item || buying) return;
+    setCheckoutError(null);
+    setBuying(true);
+    try {
+      const { url } = await checkout(item.id);
+      // Full navigation, not react-router: Stripe Checkout is a hosted page
+      // on checkout.stripe.com, not a route in this app. .assign() (not
+      // `.href = url`) sidesteps an oxlint immutability false-positive on
+      // property assignment to the `window` global.
+      window.location.assign(url);
+    } catch (err) {
+      setCheckoutError(
+        err instanceof ApiError
+          ? err.message
+          : "Something went wrong starting checkout — try again, or use Local pickup below.",
+      );
+      setBuying(false);
+    }
+  }
 
   if (!item) {
     return (
@@ -95,8 +117,9 @@ export function ProductDetailPage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <button
-              onClick={() => setCheckoutNote(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-ink px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+              onClick={handleBuyNow}
+              disabled={buying}
+              className="inline-flex items-center gap-2 rounded-full bg-ink px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg
                 width="15"
@@ -110,7 +133,7 @@ export function ProductDetailPage() {
                 <rect x="4" y="10.5" width="16" height="10" rx="2" />
                 <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
               </svg>
-              Buy now
+              {buying ? "Redirecting to checkout…" : "Buy now"}
             </button>
 
             <button
@@ -149,13 +172,9 @@ export function ProductDetailPage() {
             Secure checkout powered by Stripe · Encrypted card information
           </p>
 
-          {checkoutNote && (
-            <p className="mt-3 text-sm text-muted">
-              Card checkout isn&apos;t switched on yet — use Local pickup, or{" "}
-              <Link to="/contact" className="text-brand hover:underline">
-                message us
-              </Link>{" "}
-              and we&apos;ll sort it out.
+          {checkoutError && (
+            <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {checkoutError}
             </p>
           )}
 

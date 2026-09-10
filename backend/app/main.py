@@ -180,11 +180,9 @@ def trade_in(body: TradeInRequest, request: Request, settings: Settings = Depend
     lines = [f"Name: {html.escape(body.name)}", f"Email: {html.escape(body.email)}"]
     if body.phone:
         lines.append(f"Phone: {html.escape(body.phone)}")
-    lines.append(f"Device: {html.escape(body.device_brand)} {html.escape(body.device_model)}")
-    if body.condition:
-        lines.append(f"Condition: {html.escape(body.condition)}")
-    if body.imei:
-        lines.append(f"IMEI: {html.escape(body.imei)}")
+    lines.append(f"IMEI: {html.escape(body.imei)}")
+    lines.append(f"Condition: {html.escape(body.condition)}")
+    lines.append(f"Unlock status: {html.escape(body.unlock_status)}")
     if body.notes:
         lines.append(f"Notes: {html.escape(body.notes)}")
 
