@@ -52,8 +52,8 @@ export function Footer() {
           <Link to="/" className="flex items-center gap-3">
             {/* Same placeholder as the header — see Header.tsx's comment.
                 Swap /public/logo.svg for the real mark when it's ready. */}
-            <img src="/logo.svg" alt="" className="h-9 w-9" />
-            <span className="text-3xl font-bold tracking-tight text-ink">CarlosTechSolutions</span>
+            <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
+            <span className="text-xl font-bold tracking-tight text-ink">CarlosTechSolutions</span>
           </Link>
 
           <p className="mt-5 max-w-xs text-[15px] leading-relaxed text-muted">

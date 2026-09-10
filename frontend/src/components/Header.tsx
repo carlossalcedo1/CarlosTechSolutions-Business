@@ -55,8 +55,8 @@ export function Header() {
               /public/logo.svg for CarlosTechSolutions' own mark whenever
               it's ready (see LAUNCH_CHECKLIST.md Phase 7: "Logo mark for
               the reserved slot"). */}
-          <img src="/logo.svg" alt="" className="h-9 w-9" />
-          <span className="text-3xl font-bold tracking-tight text-ink">CarlosTechSolutions</span>
+          <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
+          <span className="text-lg font-bold tracking-tight text-ink">CarlosTechSolutions</span>
         </Link>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[15px]">
@@ -82,8 +82,8 @@ export function Header() {
             is already wrapping, and reserving a matching logo-width slot
             would just steal space the nav needs to wrap into. */}
         <div aria-hidden className="hidden shrink-0 items-center gap-2 opacity-0 sm:flex">
-          <img src="/logo.svg" alt="" className="h-9 w-9" />
-          <span className="text-3xl font-bold tracking-tight">CarlosTechSolutions</span>
+          <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
+          <span className="text-lg font-bold tracking-tight">CarlosTechSolutions</span>
         </div>
       </div>
     </header>
