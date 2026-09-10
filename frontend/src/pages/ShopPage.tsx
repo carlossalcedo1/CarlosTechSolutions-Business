@@ -3,17 +3,23 @@ import { useSearchParams } from "react-router-dom";
 import { items } from "../data/items";
 import { CATEGORIES } from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
+import { useSoldItemIds } from "../lib/useSoldItemIds";
 import type { Category, Condition } from "../types";
 
 const CONDITIONS: Condition[] = ["New", "A+ - Excellent", "B - Good", "C - Fair"];
-const CHIPS: Array<Category | "All"> = ["All", ...CATEGORIES];
+// "Sold" is a display bucket, not a real Category — sold items live here
+// instead of mixed into (or vanished from) the categories they were listed
+// under, so a sale doesn't need a catalog rebuild to be reflected anywhere.
+type Chip = Category | "All" | "Sold";
+const CHIPS: Chip[] = ["All", ...CATEGORIES, "Sold"];
 
 type SortOption = "newest" | "price-asc" | "price-desc";
 
 export function ShopPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeCategory = (searchParams.get("category") as Category | null) ?? "All";
+  const activeChip = (searchParams.get("category") as Chip | null) ?? "All";
   const query = searchParams.get("q") ?? "";
+  const soldIds = useSoldItemIds();
 
   const [brand, setBrand] = useState("All");
   const [condition, setCondition] = useState<Condition | "All">("All");
@@ -24,19 +30,22 @@ export function ShopPage() {
     [],
   );
 
-  function setCategory(category: Category | "All") {
+  function setCategory(chip: Chip) {
     const next = new URLSearchParams(searchParams);
-    if (category === "All") {
+    if (chip === "All") {
       next.delete("category");
     } else {
-      next.set("category", category);
+      next.set("category", chip);
     }
     setSearchParams(next);
   }
 
   const filtered = useMemo(() => {
     let result = items.filter((item) => {
-      if (activeCategory !== "All" && item.category !== activeCategory) return false;
+      const isSold = soldIds.has(item.id);
+      if (activeChip === "Sold") return isSold;
+      if (isSold) return false;
+      if (activeChip !== "All" && item.category !== activeChip) return false;
       if (brand !== "All" && item.brand !== brand) return false;
       if (condition !== "All" && item.condition !== condition) return false;
       if (query && !item.name.toLowerCase().includes(query.toLowerCase())) return false;
@@ -50,7 +59,7 @@ export function ShopPage() {
     });
 
     return result;
-  }, [activeCategory, brand, condition, query, sort]);
+  }, [activeChip, brand, condition, query, sort, soldIds]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -68,7 +77,7 @@ export function ShopPage() {
               key={chip}
               onClick={() => setCategory(chip)}
               className={`rounded-full border px-4 py-1.5 text-sm ${
-                activeCategory === chip
+                activeChip === chip
                   ? "border-ink bg-ink text-white"
                   : "border-hairline text-ink hover:border-ink"
               }`}
@@ -121,7 +130,7 @@ export function ShopPage() {
       {filtered.length > 0 ? (
         <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map((item) => (
-            <ProductCard key={item.id} item={item} />
+            <ProductCard key={item.id} item={item} sold={soldIds.has(item.id)} />
           ))}
         </div>
       ) : (

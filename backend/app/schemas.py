@@ -61,3 +61,7 @@ class SubscribeRequest(_Honeypot):
 
 class OkResponse(BaseModel):
     ok: bool = True
+
+
+class SoldItemsResponse(BaseModel):
+    sold_item_ids: list[str]

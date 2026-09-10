@@ -7,6 +7,7 @@ import { PlaceholderImage } from "../components/PlaceholderImage";
 import { CleanWayMark } from "../components/CleanWayMark";
 import { ProjectsSection } from "../components/ProjectsSection";
 import { subscribe, ApiError } from "../lib/api";
+import { useSoldItemIds } from "../lib/useSoldItemIds";
 
 // Four promises shown in the 2x2 grid. The fourth is an autofilled
 // placeholder — swap in whatever you actually want to promise.
@@ -52,7 +53,13 @@ export function HomePage() {
   const [subscribing, setSubscribing] = useState(false);
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
 
+  const soldIds = useSoldItemIds();
+  // Sold items skip this teaser entirely rather than showing a badge here —
+  // it's a "what's new" highlight strip, not the full catalog, so a sold
+  // item just falls out and the next one takes its place. The full catalog
+  // (ShopPage) still shows sold items with a badge instead of removing them.
   const recentlyListed = [...items]
+    .filter((item) => !soldIds.has(item.id))
     .sort((a, b) => (a.dateAdded < b.dateAdded ? 1 : -1))
     .slice(0, 4);
 

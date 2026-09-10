@@ -25,6 +25,7 @@ from .schemas import (
     CheckoutResponse,
     ContactRequest,
     OkResponse,
+    SoldItemsResponse,
     SubscribeRequest,
     TradeInRequest,
 )
@@ -71,6 +72,16 @@ def _guard(request: Request) -> None:
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/api/sold-items", response_model=SoldItemsResponse)
+def sold_items(request: Request):
+    # Public and read-only on purpose: the frontend's catalog is a static
+    # build (LAUNCH_CHECKLIST.md "Done" list), so it has no way to know a
+    # sale happened since the last deploy without asking. This is the only
+    # thing it asks for — which ids are sold, nothing else — so a listing
+    # marked "Sold" instead of silently vanishing until the next rebuild.
+    return SoldItemsResponse(sold_item_ids=request.app.state.sold_store.sold_ids())
 
 
 @app.post("/api/checkout", response_model=CheckoutResponse)
@@ -126,14 +137,14 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
                 send_email(
                     settings,
                     to=buyer_email,
-                    subject=f"Your order: {item.name}",
-                    html=f"<p>Thanks for your order — {html.escape(item.name)} is confirmed. "
+                    subject=f"Congrats on your {item.name}!",
+                    html=f"<p>Congrats — your order for {html.escape(item.name)} is confirmed. "
                     "You'll get a separate receipt from Stripe.</p>",
                 )
-            if settings.notify_email:
+            if settings.sale_notify_address:
                 send_email(
                     settings,
-                    to=settings.notify_email,
+                    to=settings.sale_notify_address,
                     subject=f"Sold: {item.name}",
                     html=f"<p>{html.escape(item.name)} ({item.id}) just sold for "
                     f"{item.price_display}.</p>",

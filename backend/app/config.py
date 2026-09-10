@@ -29,7 +29,13 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     resend_api_key: str = ""
     resend_audience_id: str = ""
+    # General form notifications (contact, trade-in).
     notify_email: str = ""
+    # "Cha-ching" sold alerts, kept separate on purpose — see main.py's
+    # webhook handler — so a sale notice doesn't sit in the same inbox as
+    # customer contact/trade-in mail. Falls back to notify_email if unset
+    # rather than requiring both to be configured.
+    sale_notify_email: str = ""
     site_url: str = "http://localhost:5173"
 
     # Not in the checklist's env table (which only lists what launch needs
@@ -49,6 +55,10 @@ class Settings(BaseSettings):
             return self.from_email
         host = urlparse(self.site_url).hostname or "example.com"
         return f"noreply@{host}"
+
+    @property
+    def sale_notify_address(self) -> str:
+        return self.sale_notify_email or self.notify_email
 
 
 @lru_cache

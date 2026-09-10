@@ -42,6 +42,10 @@ class SoldStore:
         with self._lock:
             return item_id in self._read()["sold_item_ids"]
 
+    def sold_ids(self) -> list[str]:
+        with self._lock:
+            return list(self._read()["sold_item_ids"])
+
     def mark_sold(self, item_id: str) -> None:
         with self._lock:
             data = self._read()

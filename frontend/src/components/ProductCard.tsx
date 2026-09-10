@@ -4,12 +4,19 @@ import { PlaceholderImage } from "./PlaceholderImage";
 import { ConditionBadge } from "./ConditionBadge";
 import { formatPrice } from "../lib/format";
 
-export function ProductCard({ item }: { item: Item }) {
+export function ProductCard({ item, sold = false }: { item: Item; sold?: boolean }) {
   return (
     <Link
       to={`/product/${item.id}`}
-      className="flex flex-col overflow-hidden rounded border border-hairline transition hover:shadow-md"
+      className={`relative flex flex-col overflow-hidden rounded border border-hairline transition hover:shadow-md ${
+        sold ? "opacity-70" : ""
+      }`}
     >
+      {sold && (
+        <span className="absolute left-2 top-2 z-10 rounded-full bg-ink px-2.5 py-1 text-xs font-semibold text-white">
+          Sold
+        </span>
+      )}
       {item.images.length > 0 ? (
         <img
           src={item.images[0]}

@@ -46,7 +46,7 @@ One bad `rm` and it's gone.
 
 ## Phase 1 — The backend service
 
-A FastAPI container behind Caddy. Five routes:
+A FastAPI container behind Caddy. Six routes:
 
 | Route | Does | Needs |
 |---|---|---|
@@ -55,6 +55,7 @@ A FastAPI container behind Caddy. Five routes:
 | `POST /api/contact` | Contact / repair / unlock form → email you | Resend key |
 | `POST /api/trade-in` | Trade-in submission → email you | Resend key |
 | `POST /api/subscribe` | Record the email (real Resend audience is a Stretch goal, below) | — |
+| `GET /api/sold-items` | Public, read-only — Phase 4 addition. The catalog is a static build, so this is how it knows a sale happened without a rebuild: sold items get a "Sold" badge and move to a Sold filter instead of vanishing | — |
 
 - [x] FastAPI app skeleton, loading `items.json` through `load_catalog()` at boot
       so a corrupt catalog fails at startup instead of at checkout
@@ -235,7 +236,8 @@ All server-side. None of these ever reach the browser.
 | `STRIPE_WEBHOOK_SECRET` | Created when you register the webhook endpoint |
 | `RESEND_API_KEY` | Resend dashboard |
 | `RESEND_AUDIENCE_ID` | Resend → Audiences |
-| `NOTIFY_EMAIL` | Where form notifications land |
+| `NOTIFY_EMAIL` | Where contact/trade-in form notifications land |
+| `SALE_NOTIFY_EMAIL` | Where "Sold: X" alerts land (falls back to `NOTIFY_EMAIL` if blank) — needs its own Cloudflare Email Routing rule to actually receive, same as `request@`/`inquiry@` |
 | `SITE_URL` | For Stripe redirect URLs and email links |
 
 ---

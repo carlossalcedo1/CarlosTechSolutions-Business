@@ -13,17 +13,26 @@
 
 export class ApiError extends Error {}
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  let res: Response;
+async function request(path: string, init?: RequestInit): Promise<Response> {
   try {
-    res = await fetch(`/api${path}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    return await fetch(`/api${path}`, init);
   } catch {
     throw new ApiError("Couldn't reach the server. Check your connection and try again.");
   }
+}
+
+async function get<T>(path: string): Promise<T> {
+  const res = await request(path);
+  if (!res.ok) throw new ApiError(`Request failed (${res.status})`);
+  return res.json() as Promise<T>;
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await request(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
@@ -48,6 +57,13 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   }
 
   return res.json() as Promise<T>;
+}
+
+// Public and read-only — see backend/app/main.py's /api/sold-items — so the
+// static-built catalog can show "Sold" instead of silently staying
+// available until the next deploy.
+export function getSoldItemIds() {
+  return get<{ sold_item_ids: string[] }>("/sold-items").then((r) => r.sold_item_ids);
 }
 
 export function checkout(itemId: string) {

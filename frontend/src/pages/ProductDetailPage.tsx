@@ -6,17 +6,20 @@ import { ConditionBadge } from "../components/ConditionBadge";
 import { formatPrice } from "../lib/format";
 import { CONTACT_PHONE } from "../lib/constants";
 import { checkout, ApiError } from "../lib/api";
+import { useSoldItemIds } from "../lib/useSoldItemIds";
 
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const item = id ? getItemById(id) : undefined;
+  const soldIds = useSoldItemIds();
+  const isSold = !!item && soldIds.has(item.id);
   const [buying, setBuying] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [activeImage, setActiveImage] = useState(0);
 
   async function handleBuyNow() {
-    if (!item || buying) return;
+    if (!item || buying || isSold) return;
     setCheckoutError(null);
     setBuying(true);
     try {
@@ -103,8 +106,13 @@ export function ProductDetailPage() {
         <div>
           <h1 className="text-2xl font-semibold text-ink">{item.name}</h1>
           <p className="mt-1 text-2xl font-semibold text-ink">{formatPrice(item.priceCents)}</p>
-          <div className="mt-2">
+          <div className="mt-2 flex items-center gap-2">
             <ConditionBadge condition={item.condition} />
+            {isSold && (
+              <span className="rounded-full bg-ink px-2.5 py-1 text-xs font-semibold text-white">
+                Sold
+              </span>
+            )}
           </div>
 
           <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted">
@@ -118,7 +126,7 @@ export function ProductDetailPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={handleBuyNow}
-              disabled={buying}
+              disabled={buying || isSold}
               className="inline-flex items-center gap-2 rounded-full bg-ink px-8 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg
@@ -133,7 +141,7 @@ export function ProductDetailPage() {
                 <rect x="4" y="10.5" width="16" height="10" rx="2" />
                 <path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
               </svg>
-              {buying ? "Redirecting to checkout…" : "Buy now"}
+              {isSold ? "Sold" : buying ? "Redirecting to checkout…" : "Buy now"}
             </button>
 
             <button
