@@ -1,4 +1,3 @@
-import { PlaceholderImage } from "../components/PlaceholderImage";
 import { CleanWayMark } from "../components/CleanWayMark";
 import { ProjectsSection } from "../components/ProjectsSection";
 
@@ -7,7 +6,11 @@ export function AboutPage() {
     <div>
       <div className="mx-auto max-w-4xl px-4 py-10">
         <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
-          <PlaceholderImage label="Carlos" className="h-28 w-28 shrink-0 rounded-full" />
+          <img
+            src="/carlos-headshot.jpg"
+            alt="Carlos"
+            className="h-28 w-28 shrink-0 rounded-full object-cover"
+          />
           <div>
             <h1 className="text-2xl font-semibold text-ink">Meet Carlos</h1>
             <p className="mt-1 text-muted">
