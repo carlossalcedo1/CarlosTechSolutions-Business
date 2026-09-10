@@ -25,7 +25,9 @@ export function PhotoCarousel() {
 
   return (
     <div className="mt-16">
-      <div className="relative overflow-hidden rounded-xl border border-hairline">
+      <h2 className="text-center text-lg font-semibold text-ink">Here&apos;s some recent repairs</h2>
+
+      <div className="relative mt-4 overflow-hidden rounded-xl border border-hairline">
         <img
           key={slide.src}
           src={slide.src}
@@ -53,8 +55,11 @@ export function PhotoCarousel() {
         </button>
       </div>
 
-      {/* Subheading under the photo, swapping with it as the slide changes. */}
-      <p className="mt-3 text-sm font-medium text-ink">{slide.caption}</p>
+      {/* Subheading under the photo, swapping with it as the slide changes.
+          text-center explicitly, rather than relying on this component's
+          parent happening to set it — this should center regardless of
+          where PhotoCarousel is used. */}
+      <p className="mt-3 text-center text-sm font-medium text-ink">{slide.caption}</p>
 
       <div className="mt-2 flex justify-center gap-1.5">
         {SLIDES.map((s, i) => (
