@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 // Real photos off the actual repair bench (not stock/placeholder) — see
 // LAUNCH_CHECKLIST.md Phase 7's "real photos" item, partially crossed off
@@ -10,18 +10,12 @@ const SLIDES = [
   { src: "/carousel/IMG_5627.jpg", caption: "Cracked back glass? We fix that." },
   { src: "/carousel/IMG_5628.jpg", caption: "iPhone 13 mini — full teardown" },
   { src: "/carousel/IMG_5629.jpg", caption: "Battery replacement, done right" },
-  { src: "/carousel/IMG_5630.jpg", caption: "Refurbished and ready to go" },
+  { src: "/carousel/IMG_5630.jpg", caption: "Complete destruction? No problem." },
 ];
 
-// Auto-advances, but every control (arrows, dots) is also manual so nobody
-// is stuck waiting for it to cycle back around to a slide they wanted.
+// Manual only — no auto-advance. Arrows + dots are the only way through.
 export function PhotoCarousel() {
   const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 1) % SLIDES.length), 4500);
-    return () => clearInterval(id);
-  }, []);
 
   function go(delta: number) {
     setIndex((i) => (i + delta + SLIDES.length) % SLIDES.length);

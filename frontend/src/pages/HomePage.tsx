@@ -128,8 +128,6 @@ export function HomePage() {
             </Link>
           </div>
 
-          <PhotoCarousel />
-
           {/* Link-out card rather than embedded reviews — Facebook
               Marketplace has no public embed widget for profile reviews,
               and showing specific ratings/quotes here without real ones to
@@ -150,6 +148,8 @@ export function HomePage() {
               </span>
             </span>
           </a>
+
+          <PhotoCarousel />
         </div>
       </section>
 
