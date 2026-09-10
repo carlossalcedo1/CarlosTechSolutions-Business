@@ -1,0 +1,27 @@
+# Secrets — never let these exist in git history
+.env
+.env.*
+!.env.example
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Sold-state store (Phase 1) — runtime data, not source
+backend/*.db
+backend/*.sqlite3
+backend/sold_state.json
+
+# OS / editor cruft
+.DS_Store
+*.swp
+
+# Node (frontend has its own, but belt and suspenders at the root)
+node_modules/
+dist/
+dist-ssr/
+*.log
