@@ -82,9 +82,10 @@ A FastAPI container behind Caddy. Five routes:
       `resend._domainkey`, SPF + bounce MX at `send.carlostechsolutions.com`,
       confirmed directly against Cloudflare's authoritative NS. The apex's own
       MX/SPF are Cloudflare Email Routing's (receiving), untouched — no conflict.
-      Gap: no `_dmarc.carlostechsolutions.com` TXT yet. Not required for Resend
-      to send, but add one before relying on inbox placement:
-      `v=DMARC1; p=none; rua=mailto:you@carlostechsolutions.com`
+      DMARC added: `v=DMARC1; p=none; rua=mailto:request@carlostechsolutions.com`
+      (monitor-only for now — Cloudflare showing "policy: None" is the record
+      working as intended, not an error. Tighten to `quarantine` after a
+      couple weeks of clean reports.)
 - [x] Confirm `request@` and `inquiry@` actually **receive** mail — confirmed
 - [x] Send yourself a test from each address before launch — confirmed:
       `/api/contact` and `/api/trade-in` both landed real emails at
@@ -270,3 +271,14 @@ Different from transactional email, and legally so — don't build this casually
       people to ignore you
 - [ ] Watch the free tier: ~3,000/month and ~100/day. 100 subscribers × weekly
       is comfortable; a daily blast to 200 is not
+
+### Prettier email
+
+- [x] Plain-text alternative alongside HTML — done now (small spam-score
+      signal, cheap to fix): `mailer.send_email` auto-derives a text part
+      from the HTML body unless one is passed explicitly
+- [ ] Actual designed HTML templates instead of plain `<p>` paragraphs
+- [ ] BIMI (logo next to the email in the inbox) — needs DMARC at
+      `quarantine`/`reject` (we're at `none` on purpose for now) and, to
+      actually render in Gmail, a paid Verified Mark Certificate tied to a
+      registered trademark. Skip unless that math changes.

@@ -10,7 +10,9 @@ anything in here (or a dependency) does `import email`.
 
 from __future__ import annotations
 
+import html as html_lib
 import logging
+import re
 
 import resend
 
@@ -18,9 +20,26 @@ from .config import Settings
 
 logger = logging.getLogger("app.mailer")
 
+_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _html_to_text(source: str) -> str:
+    """Crude plain-text fallback, good enough for the plain <p>...</p> bodies
+    built in main.py — not a general HTML-to-text converter. A missing text
+    part is a real (if small) spam-score signal, which is the only reason
+    this exists; hand-authored, prettier templates are a stretch goal."""
+    text = source.replace("</p>", "\n\n").replace("<br>", "\n").replace("<br/>", "\n")
+    return html_lib.unescape(_TAG_RE.sub("", text)).strip()
+
 
 def send_email(
-    settings: Settings, *, to: str, subject: str, html: str, reply_to: str | None = None
+    settings: Settings,
+    *,
+    to: str,
+    subject: str,
+    html: str,
+    text: str | None = None,
+    reply_to: str | None = None,
 ) -> None:
     if not settings.resend_api_key:
         # Lets the rest of the app run and be tested before the Resend key
@@ -34,6 +53,7 @@ def send_email(
         "to": [to],
         "subject": subject,
         "html": html,
+        "text": text if text is not None else _html_to_text(html),
     }
     if reply_to:
         payload["reply_to"] = reply_to
