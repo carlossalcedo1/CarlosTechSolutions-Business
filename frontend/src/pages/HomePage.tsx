@@ -84,23 +84,26 @@ export function HomePage() {
       {/* Hero — cream. The headline uses clamp() so it scales with the
           viewport instead of jumping between fixed breakpoints. */}
       <section className="bg-surface">
-        <div className="mx-auto max-w-4xl px-6 py-20 text-center sm:py-28">
+        <div className="mx-auto max-w-4xl px-6 pt-4 pb-20 text-center sm:pt-6 sm:pb-28">
           {/* Replaces the old header links to PromptWorks/RhinoTrade — those
               didn't fit the utility bar on mobile, and a callout right above
               the headline is more visible than a small link buried in a
               cramped row anyway. Jumps to the projects section further down
               this same page (see id="projects" below).
-              Negative margin pulls it up close to the header, rather than
-              sitting wherever the hero's own top padding happens to land it. */}
+              Explicit top padding here (not the negative-margin-on-an-
+              inline-flex trick tried before — unreliable, and didn't
+              actually move anything) plus the h1's mt-8/mt-12 below give a
+              controlled 1:2 split of the header-to-headline gap: roughly a
+              third above this callout, two-thirds between it and the h1. */}
           <a
             href="#projects"
-            className="-mt-16 inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs text-ink transition hover:border-ink sm:-mt-24"
+            className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs text-ink transition hover:border-ink"
           >
             <span className="font-bold">Looking for these?</span> PromptWorks &middot; RhinoTrade
             <span aria-hidden>&rarr;</span>
           </a>
 
-          <h1 className="mt-5 text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink">
+          <h1 className="mt-8 text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink sm:mt-12">
             Your one stop shop for all your tech needs
           </h1>
           {/* Placeholder description — rewrite this in your own voice. */}
