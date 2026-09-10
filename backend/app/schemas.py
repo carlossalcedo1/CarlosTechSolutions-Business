@@ -48,6 +48,10 @@ class TradeInRequest(_Honeypot):
     imei: str = Field(min_length=1, max_length=32)
     condition: str = Field(min_length=1, max_length=50)
     unlock_status: str = Field(min_length=1, max_length=50)
+    # Only meaningful when unlock_status is the carrier-locked option — see
+    # SellDevicePage.tsx, which only shows this field in that case.
+    carrier: str = Field(default="", max_length=50)
+    battery_health: str = Field(default="", max_length=20)
     notes: str = Field(default="", max_length=5000)
 
 

@@ -183,6 +183,10 @@ def trade_in(body: TradeInRequest, request: Request, settings: Settings = Depend
     lines.append(f"IMEI: {html.escape(body.imei)}")
     lines.append(f"Condition: {html.escape(body.condition)}")
     lines.append(f"Unlock status: {html.escape(body.unlock_status)}")
+    if body.carrier:
+        lines.append(f"Carrier: {html.escape(body.carrier)}")
+    if body.battery_health:
+        lines.append(f"Battery health: {html.escape(body.battery_health)}")
     if body.notes:
         lines.append(f"Notes: {html.escape(body.notes)}")
 

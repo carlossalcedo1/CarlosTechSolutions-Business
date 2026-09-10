@@ -75,6 +75,8 @@ export interface TradeInPayload {
   imei: string;
   condition: string;
   unlock_status: string;
+  carrier?: string;
+  battery_health?: string;
   notes?: string;
 }
 

@@ -13,7 +13,13 @@ const IMEI_GUIDE = "https://support.apple.com/en-us/108037?device-type=iphone";
 // they sound similar, so keeping them as separate types avoids conflating
 // "what the seller says" with "what we list it as" after inspection.
 const CONDITIONS = ["Like new", "Good", "Fair", "Parts only"] as const;
-const UNLOCK_STATUSES = ["Unlocked", "Carrier-locked", "Not sure"] as const;
+const UNLOCK_STATUSES = [
+  "Fully Unlocked",
+  "Carrier-Locked (state carrier below)",
+  "iCloud Locked",
+  "Not Sure",
+] as const;
+const CARRIER_LOCKED = "Carrier-Locked (state carrier below)";
 
 export function SellDevicePage() {
   const [form, setForm] = useState({
@@ -23,11 +29,15 @@ export function SellDevicePage() {
     imei: "",
     condition: CONDITIONS[0] as (typeof CONDITIONS)[number],
     unlockStatus: UNLOCK_STATUSES[0] as (typeof UNLOCK_STATUSES)[number],
+    carrier: "",
+    batteryHealth: "",
     notes: "",
   });
   const [sent, setSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isCarrierLocked = form.unlockStatus === CARRIER_LOCKED;
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -46,6 +56,8 @@ export function SellDevicePage() {
         imei: form.imei,
         condition: form.condition,
         unlock_status: form.unlockStatus,
+        carrier: isCarrierLocked ? form.carrier : undefined,
+        battery_health: form.batteryHealth,
         notes: form.notes,
       });
       setSent(true);
@@ -166,6 +178,31 @@ export function SellDevicePage() {
                 ))}
               </select>
             </div>
+          </div>
+
+          {isCarrierLocked && (
+            <div>
+              <label className="text-sm text-muted">Carrier</label>
+              <input
+                required
+                value={form.carrier}
+                onChange={(e) => set("carrier", e.target.value)}
+                placeholder="e.g. AT&T, Verizon, T-Mobile"
+                className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="text-sm text-muted">
+              Battery health <span className="text-muted/70">(optional)</span>
+            </label>
+            <input
+              value={form.batteryHealth}
+              onChange={(e) => set("batteryHealth", e.target.value)}
+              placeholder="e.g. 87% — Settings > Battery > Battery Health"
+              className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
+            />
           </div>
 
           <div>
