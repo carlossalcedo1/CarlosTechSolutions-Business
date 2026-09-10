@@ -77,11 +77,18 @@ A FastAPI container behind Caddy. Five routes:
 
 ### Sending at all
 
-- [ ] Add Resend's SPF + DKIM records in Cloudflare, verify the domain
-- [ ] Confirm `request@` and `inquiry@` actually **receive** mail — sending and
-      receiving are separate configs, and Cloudflare Email Routing handles the
-      receiving half
-- [ ] Send yourself a test from each address before launch
+- [x] Add Resend's SPF + DKIM records in Cloudflare, verify the domain — done
+      via a `send.` subdomain (Resend's current pattern): DKIM at
+      `resend._domainkey`, SPF + bounce MX at `send.carlostechsolutions.com`,
+      confirmed directly against Cloudflare's authoritative NS. The apex's own
+      MX/SPF are Cloudflare Email Routing's (receiving), untouched — no conflict.
+      Gap: no `_dmarc.carlostechsolutions.com` TXT yet. Not required for Resend
+      to send, but add one before relying on inbox placement:
+      `v=DMARC1; p=none; rua=mailto:you@carlostechsolutions.com`
+- [x] Confirm `request@` and `inquiry@` actually **receive** mail — confirmed
+- [x] Send yourself a test from each address before launch — confirmed:
+      `/api/contact` and `/api/trade-in` both landed real emails at
+      `request@carlostechsolutions.com` via Resend
 
 ### "Sending email from the frontend"
 
@@ -115,18 +122,28 @@ form submit → POST /api/contact → server holds the key → Resend → your i
 
 ## Phase 3 — Payments (Stripe)
 
-- [ ] Build `/api/checkout` in **test mode** first (`sk_test_...`)
-- [ ] Test webhooks locally with the Stripe CLI (`stripe listen --forward-to`)
-      — no deploy needed to iterate
-- [ ] Collect shipping address in Checkout for shipped orders
-- [ ] Handle `checkout.session.completed`: mark sold, email buyer, email you
-- [ ] **Make the webhook idempotent.** Stripe retries, and will occasionally
-      deliver the same event twice. Handling it twice means two "sold" emails,
-      or worse if you ever wire it to inventory counts
-- [ ] Turn on Stripe's own receipt emails — one less thing to build
-- [ ] Test the full path with card `4242 4242 4242 4242`
-- [ ] Test the **already-sold** path: two checkouts on one device, second one
-      must be refused before payment
+- [x] Build `/api/checkout` in **test mode** first (`sk_test_...`)
+- [x] Test webhooks locally with the Stripe CLI (`stripe listen --forward-to`)
+      — no deploy needed to iterate. Gotcha hit and worth remembering: your
+      Stripe login has more than one sandbox, and `stripe login`'s OAuth
+      pairing landed on a *different* one than the `sk_test_` key in
+      `backend/.env` belongs to — `stripe listen`/`events` silently saw nothing
+      because they were watching the wrong account. Fix was `--api-key` on
+      every CLI call to pin it to the same key the app uses.
+- [x] Collect shipping address in Checkout for shipped orders — confirmed live
+      in the actual test session (real address collected at checkout)
+- [x] Handle `checkout.session.completed`: mark sold, email buyer, email you
+      — caught and fixed a real bug here, see the `c2f402a` commit: the
+      handler 500'd on every real event before this fix
+- [x] **Make the webhook idempotent.** — verified: redelivering the same
+      event twice only processes it once
+- [ ] Turn on Stripe's own receipt emails — dashboard setting, not code
+- [x] Test the full path with card `4242 4242 4242 4242` — real test-mode
+      purchase completed (USB-C Hub, $29.00), confirmed `paid`/`complete`
+      directly via the Stripe API
+- [x] Test the **already-sold** path: two checkouts on one device, second one
+      must be refused before payment — confirmed: second `/api/checkout` on
+      the now-sold item returns 409 before Stripe is ever called
 
 ### Then, to accept real money
 
