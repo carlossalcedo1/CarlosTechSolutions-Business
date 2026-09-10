@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { items } from "../data/items";
-import { CATEGORIES } from "../lib/constants";
+import { CATEGORIES, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
-import { PlaceholderImage } from "../components/PlaceholderImage";
 import { CleanWayMark } from "../components/CleanWayMark";
 import { ProjectsSection } from "../components/ProjectsSection";
 import { subscribe, ApiError } from "../lib/api";
@@ -90,12 +89,14 @@ export function HomePage() {
               didn't fit the utility bar on mobile, and a callout right above
               the headline is more visible than a small link buried in a
               cramped row anyway. Jumps to the projects section further down
-              this same page (see id="projects" below). */}
+              this same page (see id="projects" below).
+              Negative margin pulls it up close to the header, rather than
+              sitting wherever the hero's own top padding happens to land it. */}
           <a
             href="#projects"
-            className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs font-medium text-ink transition hover:border-ink"
+            className="-mt-16 inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs text-ink transition hover:border-ink sm:-mt-24"
           >
-            Looking for these? PromptWorks &middot; RhinoTrade
+            <span className="font-bold">Looking for these?</span> PromptWorks &middot; RhinoTrade
             <span aria-hidden>&rarr;</span>
           </a>
 
@@ -123,7 +124,26 @@ export function HomePage() {
             </Link>
           </div>
 
-          <PlaceholderImage label="image carousel" className="mt-16 h-56 w-full rounded-xl sm:h-72" />
+          {/* Link-out card rather than embedded reviews — Facebook
+              Marketplace has no public embed widget for profile reviews,
+              and showing specific ratings/quotes here without real ones to
+              cite would just be making them up. */}
+          <a
+            href={FACEBOOK_MARKETPLACE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-16 flex items-center justify-center gap-3 rounded-xl border border-hairline bg-white px-6 py-6 text-center transition hover:border-ink sm:py-8"
+          >
+            <span aria-hidden className="text-2xl">
+              &#11088;
+            </span>
+            <span>
+              <span className="block font-semibold text-ink">Rated by real buyers</span>
+              <span className="mt-1 block text-sm text-muted">
+                See our reviews on Facebook Marketplace <span aria-hidden>&rarr;</span>
+              </span>
+            </span>
+          </a>
         </div>
       </section>
 
