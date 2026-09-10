@@ -86,7 +86,20 @@ export function HomePage() {
           viewport instead of jumping between fixed breakpoints. */}
       <section className="bg-surface">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center sm:py-28">
-          <h1 className="text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink">
+          {/* Replaces the old header links to PromptWorks/RhinoTrade — those
+              didn't fit the utility bar on mobile, and a callout right above
+              the headline is more visible than a small link buried in a
+              cramped row anyway. Jumps to the projects section further down
+              this same page (see id="projects" below). */}
+          <a
+            href="#projects"
+            className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs font-medium text-ink transition hover:border-ink"
+          >
+            Looking for these? PromptWorks &middot; RhinoTrade
+            <span aria-hidden>&rarr;</span>
+          </a>
+
+          <h1 className="mt-5 text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink">
             Your one stop shop for all your tech needs
           </h1>
           {/* Placeholder description — rewrite this in your own voice. */}
@@ -235,7 +248,7 @@ export function HomePage() {
 
       {/* Other projects — replaces the old About Carlos teaser. Shared with
           the Services page via ProjectsSection. */}
-      <ProjectsSection />
+      <ProjectsSection id="projects" />
 
       {/* The Clean Way — full-bleed dark section, centered */}
       <section className="bg-night text-white">
