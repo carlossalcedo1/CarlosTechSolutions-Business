@@ -18,14 +18,16 @@ webhook without one.
 - [x] Domain + Cloudflare DNS
 - [x] Stripe dashboard account
 - [x] Server running Docker + Caddy
+- [x] Everything committed to git (Phase 0)
+- [x] Backend service skeleton — all 5 routes, builds + smoke-tested in Docker (Phase 1)
 
 **Not built yet**
 
-- [ ] The backend service (nothing but models and the catalog loader exists)
-- [ ] Any real email sending
+- [ ] Real Stripe keys wired in (routes exist, return 500 until `STRIPE_SECRET_KEY` /
+      `STRIPE_WEBHOOK_SECRET` are set)
+- [ ] Real Resend key wired in (routes exist, skip sending until `RESEND_API_KEY` is set)
 - [ ] Any real payment
-- [ ] Deploy pipeline
-- [ ] **Nothing is committed to git** — see Phase 0
+- [ ] Deploy pipeline (docker-compose + Caddy integration — Phase 5)
 
 ---
 
@@ -34,9 +36,11 @@ webhook without one.
 Your entire frontend rewrite, the CLI, and the backend models are uncommitted.
 One bad `rm` and it's gone.
 
-- [ ] `git add -A && git commit` the current state
-- [ ] Confirm `backend/.env` is in `.gitignore` **before** any secret exists
-- [ ] Push to a remote (private repo) so the laptop isn't the only copy
+- [x] `git add -A && git commit` the current state
+- [x] Confirm `backend/.env` is in `.gitignore` **before** any secret exists
+- [ ] Push to a remote (private repo) so the laptop isn't the only copy —
+      `origin` is already set (github.com/carlossalcedo1/CarlosTechSolutions-Business),
+      this box just has no push credentials yet; push from wherever does
 
 ---
 
@@ -50,13 +54,13 @@ A FastAPI container behind Caddy. Five routes:
 | `POST /api/stripe-webhook` | Payment confirmed → mark sold, send emails | Webhook signing secret |
 | `POST /api/contact` | Contact / repair / unlock form → email you | Resend key |
 | `POST /api/trade-in` | Trade-in submission → email you | Resend key |
-| `POST /api/subscribe` | Add email to your Resend audience | Resend key |
+| `POST /api/subscribe` | Record the email (real Resend audience is a Stretch goal, below) | — |
 
-- [ ] FastAPI app skeleton, loading `items.json` through `load_catalog()` at boot
+- [x] FastAPI app skeleton, loading `items.json` through `load_catalog()` at boot
       so a corrupt catalog fails at startup instead of at checkout
-- [ ] Sold-state store — SQLite file or JSON on a mounted volume
-- [ ] CORS locked to your own domain only
-- [ ] Health endpoint for the container
+- [x] Sold-state store — JSON on a mounted volume (`backend/data/`, gitignored)
+- [x] CORS locked to your own domain only (`SITE_URL`)
+- [x] Health endpoint for the container (`GET /api/health`)
 
 **Two rules that matter more than the rest:**
 
