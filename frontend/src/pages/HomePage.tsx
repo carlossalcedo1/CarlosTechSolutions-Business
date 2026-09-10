@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { items } from "../data/items";
 import { CATEGORIES, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
+import { PhotoCarousel } from "../components/PhotoCarousel";
 import { CleanWayMark } from "../components/CleanWayMark";
 import { ProjectsSection } from "../components/ProjectsSection";
 import { subscribe, ApiError } from "../lib/api";
@@ -126,6 +127,8 @@ export function HomePage() {
               View services
             </Link>
           </div>
+
+          <PhotoCarousel />
 
           {/* Link-out card rather than embedded reviews — Facebook
               Marketplace has no public embed widget for profile reviews,
