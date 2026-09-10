@@ -1,0 +1,77 @@
+# CarlosTechSolutions-Business — hosting stack (NUC).
+#
+#   caddy        serves frontend/dist as a static SPA, proxies /api/* to api
+#   cloudflared  holds an outbound tunnel to Cloudflare; no inbound ports needed
+#   api          FastAPI: catalog pricing, Stripe checkout/webhook, contact/
+#                trade-in/subscribe forms (see backend/app/main.py)
+#
+# Deliberately its own tunnel + network, not promptworks_web — see
+# ../promptworks/deploy/RUNBOOK.md's "Adding more services" section for the
+# shared-network pattern this *isn't* using. Full isolation: nothing either
+# stack does to its own compose project (including `docker compose down`)
+# can affect the other.
+#
+# Run from this directory:  docker compose up -d
+#
+# Only caddy publishes anything, and it binds to 127.0.0.1 — see
+# promptworks' RUNBOOK.md: Docker writes its own iptables rules and does
+# not respect ufw, so 0.0.0.0 here would be LAN-reachable regardless of the
+# firewall. api publishes nothing; it's reachable only inside this compose
+# network, as http://api:8000.
+
+name: ctsb
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: ctsb-caddy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../frontend/dist:/srv:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - web
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: ctsb-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:?TUNNEL_TOKEN is not set — copy .env.example to .env and paste your tunnel token}
+    depends_on:
+      - caddy
+    networks:
+      - web
+
+  api:
+    build:
+      # Context is the repo root: the image needs backend/ and
+      # frontend/src/data/items.json — see backend/Dockerfile's own header.
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: ctsb-api
+    restart: unless-stopped
+    # No `ports:` — same reasoning as promptworks-api. Caddy reaches this
+    # over the internal network; nothing else needs to.
+    env_file:
+      - .env
+    volumes:
+      # Sold-state store + subscriber list (app/sold_store.py). Named volume,
+      # not a bind mount, so a redeploy doesn't reset what's sold — only
+      # `down -v` destroys it.
+      - api_data:/app/backend/data
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  caddy_data:
+  caddy_config:
+  api_data:

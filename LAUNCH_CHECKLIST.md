@@ -182,14 +182,59 @@ and each needs the three states it currently doesn't have.
 
 ## Phase 5 — Server and deploy
 
-- [ ] `docker-compose.yml` for the API, joined to Caddy's existing network
-- [ ] `backend/.env` on the server — `chmod 600`, never in git
-- [ ] Caddyfile block: static site from a directory, `reverse_proxy /api/*` to
-      the container
-- [ ] Deploy script: `npm run build` → rsync `dist/` to a timestamped dir →
-      **symlink swap**. The swap is what makes deploys atomic, so visitors
-      never see a half-copied site
-- [ ] Rollback: keep the last few builds so reverting is one symlink change
+Lives in `deploy/`, mirroring `../promptworks/deploy/`'s proven conventions
+on this exact box (see its `RUNBOOK.md`) rather than inventing a new
+pattern — same `deploy.sh`/`status.sh`/`logs.sh` shape, same `.env`
+handling. **Deliberately its own tunnel + docker network** (`ctsb`), not
+joined to `promptworks_web` — full isolation, so nothing either project
+does to its own compose stack (including `docker compose down`) can affect
+the other. Verified locally: built, ran `caddy` + `api` for real, confirmed
+checkout/contact/webhook/sold-items all work correctly *through Caddy*
+(not just directly against the API), including cache headers and the SPA
+fallback.
+
+- [x] `docker-compose.yml` — `caddy` (`127.0.0.1:8081`, matches
+      promptworks' `127.0.0.1:8080` pattern), `cloudflared`, `api` (built
+      from `backend/Dockerfile`, no published port, named volume for
+      `backend/data/`)
+- [x] `deploy/.env` on the server, gitignored, holding everything `api` and
+      `cloudflared` need (Stripe/Resend keys, `SITE_URL`, `TUNNEL_TOKEN`) —
+      see `deploy/.env.example`. `backend/.env` stays separate, for local
+      iteration only
+- [x] Caddyfile: static `frontend/dist` + `/api/*` to the container — uses
+      `handle` not `handle_path` since, unlike promptworks' API,
+      `backend/app/main.py`'s routes already carry the `/api` prefix
+- [x] Deploy script (`deploy.sh`) + `status.sh` + `logs.sh`
+- [ ] **`backend/Dockerfile` hardened while building this**: non-root user
+      (was running as root), and pinned to one Uvicorn worker — `RateLimiter`
+      (`app/ratelimit.py`) keeps counters in process memory, so N workers
+      would mean N× the real limit on public form endpoints. Verified: image
+      still builds and runs correctly as the non-root user.
+- [ ] **Not done**: the actual Cloudflare Tunnel. Needs, from you, in the
+      dashboard: Zero Trust → Networks → Tunnels → create a tunnel (its own,
+      not promptworks-nuc's) → Docker tab → copy the token after `--token`
+      into `deploy/.env`'s `TUNNEL_TOKEN` → add a Published Application
+      Route: `shop.carlostechsolutions.com` (or whatever hostname) → HTTP →
+      `caddy:80`. Then `cd deploy && docker compose up -d cloudflared`.
+- [ ] Once the tunnel's live: register a **test-mode** webhook endpoint in
+      the Stripe dashboard pointing at `https://<hostname>/api/stripe-webhook`
+      — removes the need to run `stripe listen` by hand for every test
+      purchase going forward. (Swapping to the *live* endpoint is Phase 3's
+      "Then, to accept real money" section, separate from this.)
+- [ ] Rollback: currently none — Caddy bind-mounts `frontend/dist` directly,
+      same as promptworks, so a bad deploy needs a new build to fix rather
+      than a symlink flip. Worth adding a timestamped-dir + symlink-swap
+      later if that ever actually bites; promptworks hasn't needed it.
+
+**Also found while testing this, unrelated to this project specifically —
+worth fixing regardless:** this box's sleep targets are `static`, not
+`masked`, despite `promptworks/deploy/RUNBOOK.md` documenting them as
+fixed. Systemd sleep targets are whole-machine, not per-project, so this
+puts *both* sites at risk of the box quietly suspending. Needs `sudo`, so
+it's on you:
+```
+sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+```
 
 **Cloudflare + Caddy gotcha:** if the orange cloud is on, Cloudflare terminates
 TLS and Caddy's automatic certificate can conflict. Either set the record to

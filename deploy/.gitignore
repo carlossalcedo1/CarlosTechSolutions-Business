@@ -1,0 +1,2 @@
+# The tunnel token and API keys are credentials. Never commit them.
+.env
