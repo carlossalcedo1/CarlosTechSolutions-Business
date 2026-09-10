@@ -22,10 +22,15 @@ export function Header() {
               The Clean Way
             </Link>
             <Link to="/help" className="hover:text-brand">
-              Need help?
+              <span className="sm:hidden">Help?</span>
+              <span className="hidden sm:inline">Need help?</span>
             </Link>
           </div>
-          <span>Gainesville, FL &amp; Nationwide Shipping</span>
+          {/* "Nationwide" dropped below sm — the row was overflowing onto
+              a second line on a phone otherwise. */}
+          <span>
+            Gainesville, FL &amp; <span className="hidden sm:inline">Nationwide </span>Shipping
+          </span>
         </div>
       </div>
 
@@ -33,12 +38,16 @@ export function Header() {
           anymore — "Shop inventory" duplicated the Shop nav link one
           glance away, and dropping it is what makes room for centering
           instead of everything bunching up against the logo.
-          Grid, not flex: an `auto` column sizes to its content, so the
-          invisible wordmark copy on the right (below) is automatically
-          exactly as wide as the real one on the left, and the nav
-          (the `1fr` middle column) ends up centered on the *row*, not
-          just centered in whatever space happens to be left over. */}
-      <div className="mx-auto grid max-w-6xl grid-cols-[auto_1fr_auto] items-center gap-x-8 gap-y-3 px-4 py-4">
+          Stacked below sm: five nav links never fit next to the wordmark
+          on a phone, and squeezing them into the leftover space (rather
+          than giving nav the full row on its own line) was the actual
+          mobile bug. flex-col by default, switching to the 3-column grid
+          at sm and up — see the classes below.
+          On sm+, grid (not flex) so the invisible wordmark copy on the
+          right is automatically exactly as wide as the real one on the
+          left, and the nav (the `1fr` middle column) ends up centered on
+          the *row*, not just centered in whatever space is left over. */}
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-4 sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-x-8 sm:gap-y-3">
         <Link to="/" className="flex shrink-0 items-center gap-2">
           <span className="flex h-9 w-9 items-center justify-center rounded border border-hairline text-[10px] text-muted">
             logo

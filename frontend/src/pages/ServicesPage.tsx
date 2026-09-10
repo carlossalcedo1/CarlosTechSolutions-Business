@@ -12,11 +12,6 @@ const SERVICES = [
     cta: { label: "Ask about an unlock", to: "/contact?intent=unlock" },
   },
   {
-    title: "Buy refurbished tech",
-    body: "New, used, and refurbished Apple, Dell, and other brands — every device factory unlocked unless specified, and backed by 7-day returns.",
-    cta: { label: "Shop inventory", to: "/shop" },
-  },
-  {
     title: "Sell or trade in",
     body: "Tell us what you have, get an estimate in minutes, then ship it in or drop it off. Payment goes out once we've verified the device.",
     cta: { label: "Get a quote", to: "/sell" },
@@ -25,6 +20,11 @@ const SERVICES = [
     title: "Fix your device",
     body: "Cracked screens, dead batteries, charging ports, and machines that won't boot. Send us the details or bring it in — you get a diagnosis and a price before any work starts.",
     cta: { label: "Get a repair quote", to: "/contact?intent=repair" },
+  },
+  {
+    title: "Buy refurbished tech",
+    body: "New, used, and refurbished Apple, Dell, and other brands — every device factory unlocked unless specified, and backed by 7-day returns.",
+    cta: { label: "Shop inventory", to: "/shop" },
   },
 ];
 
