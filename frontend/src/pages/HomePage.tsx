@@ -84,7 +84,7 @@ export function HomePage() {
       {/* Hero — cream. The headline uses clamp() so it scales with the
           viewport instead of jumping between fixed breakpoints. */}
       <section className="bg-surface">
-        <div className="mx-auto max-w-4xl px-6 pt-4 pb-20 text-center sm:pt-6 sm:pb-28">
+        <div className="mx-auto max-w-4xl px-6 pt-8 pb-20 text-center sm:pt-12 sm:pb-28">
           {/* Replaces the old header links to PromptWorks/RhinoTrade — those
               didn't fit the utility bar on mobile, and a callout right above
               the headline is more visible than a small link buried in a
