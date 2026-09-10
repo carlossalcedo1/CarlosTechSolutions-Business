@@ -182,16 +182,18 @@ and each needs the three states it currently doesn't have.
 
 ## Phase 5 — Server and deploy
 
+**Live**, staging: https://shop.carlostechsolutions.com
+
 Lives in `deploy/`, mirroring `../promptworks/deploy/`'s proven conventions
 on this exact box (see its `RUNBOOK.md`) rather than inventing a new
 pattern — same `deploy.sh`/`status.sh`/`logs.sh` shape, same `.env`
 handling. **Deliberately its own tunnel + docker network** (`ctsb`), not
 joined to `promptworks_web` — full isolation, so nothing either project
 does to its own compose stack (including `docker compose down`) can affect
-the other. Verified locally: built, ran `caddy` + `api` for real, confirmed
-checkout/contact/webhook/sold-items all work correctly *through Caddy*
-(not just directly against the API), including cache headers and the SPA
-fallback.
+the other. Verified locally *and* over the real public tunnel: checkout,
+contact, the Stripe webhook, and `/api/sold-items` all work correctly
+through Caddy on the actual domain — not just directly against the API —
+including cache headers and the SPA fallback.
 
 - [x] `docker-compose.yml` — `caddy` (`127.0.0.1:8081`, matches
       promptworks' `127.0.0.1:8080` pattern), `cloudflared`, `api` (built
@@ -205,22 +207,24 @@ fallback.
       `handle` not `handle_path` since, unlike promptworks' API,
       `backend/app/main.py`'s routes already carry the `/api` prefix
 - [x] Deploy script (`deploy.sh`) + `status.sh` + `logs.sh`
-- [ ] **`backend/Dockerfile` hardened while building this**: non-root user
+- [x] **`backend/Dockerfile` hardened while building this**: non-root user
       (was running as root), and pinned to one Uvicorn worker — `RateLimiter`
       (`app/ratelimit.py`) keeps counters in process memory, so N workers
       would mean N× the real limit on public form endpoints. Verified: image
       still builds and runs correctly as the non-root user.
-- [ ] **Not done**: the actual Cloudflare Tunnel. Needs, from you, in the
-      dashboard: Zero Trust → Networks → Tunnels → create a tunnel (its own,
-      not promptworks-nuc's) → Docker tab → copy the token after `--token`
-      into `deploy/.env`'s `TUNNEL_TOKEN` → add a Published Application
-      Route: `shop.carlostechsolutions.com` (or whatever hostname) → HTTP →
-      `caddy:80`. Then `cd deploy && docker compose up -d cloudflared`.
-- [ ] Once the tunnel's live: register a **test-mode** webhook endpoint in
-      the Stripe dashboard pointing at `https://<hostname>/api/stripe-webhook`
-      — removes the need to run `stripe listen` by hand for every test
-      purchase going forward. (Swapping to the *live* endpoint is Phase 3's
-      "Then, to accept real money" section, separate from this.)
+- [x] Cloudflare Tunnel — its own, separate from `promptworks-nuc`'s.
+      `TUNNEL_TOKEN` in `deploy/.env`, Published Application Route
+      `shop.carlostechsolutions.com` → HTTP → `caddy:80`. Confirmed: 4x
+      "Registered tunnel connection" in `cloudflared` logs, site reachable
+      publicly. Caught a real bug the moment this went live: `SITE_URL` was
+      still the local dry-run value, so Stripe would have redirected a real
+      buyer to `127.0.0.1` after paying — fixed to the real domain.
+- [x] Test-mode webhook endpoint registered in the Stripe dashboard
+      (`we_1UE0ZqGSTdDz3MK8ZkdSq7L3` → `https://shop.carlostechsolutions.com/api/stripe-webhook`)
+      — `stripe listen` is no longer needed for ongoing test purchases;
+      confirmed with a real `stripe trigger` event, signature verified,
+      200. (Swapping to the *live* endpoint is Phase 3's "Then, to accept
+      real money" section, separate from this.)
 - [ ] Rollback: currently none — Caddy bind-mounts `frontend/dist` directly,
       same as promptworks, so a bad deploy needs a new build to fix rather
       than a symlink flip. Worth adding a timestamped-dir + symlink-swap
