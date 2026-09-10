@@ -6,7 +6,7 @@ export function AboutPage() {
   return (
     <div>
       <div className="mx-auto max-w-4xl px-4 py-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:text-left">
           <PlaceholderImage label="Carlos" className="h-28 w-28 shrink-0 rounded-full" />
           <div>
             <h1 className="text-2xl font-semibold text-ink">Meet Carlos</h1>
