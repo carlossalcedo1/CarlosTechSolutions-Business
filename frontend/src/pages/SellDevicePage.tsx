@@ -9,7 +9,7 @@ import type { Category } from "../types";
 // "what the seller says" with "what we list it as" after inspection.
 type TradeInCondition = "Like new" | "Good" | "Fair" | "Parts only";
 
-const DEVICE_TYPES: Category[] = ["Phones", "Tablets", "Laptops", "Desktops"];
+const DEVICE_TYPES: Category[] = ["Phones", "Tablets", "Computers"];
 const CONDITIONS: TradeInCondition[] = ["Like new", "Good", "Fair", "Parts only"];
 
 // Rough base-price table just to make the "offer" step feel real. Stage 2
@@ -18,8 +18,7 @@ const CONDITIONS: TradeInCondition[] = ["Like new", "Good", "Fair", "Parts only"
 const BASE_PRICE: Record<Category, number> = {
   Phones: 220,
   Tablets: 180,
-  Laptops: 320,
-  Desktops: 150,
+  Computers: 320,
   Accessories: 30,
 };
 
@@ -197,7 +196,7 @@ export function SellDevicePage() {
                 <button
                   onClick={() => setSubmitted(true)}
                   disabled={!contact.name || !contact.email}
-                  className="mt-5 rounded bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
+                  className="mt-5 rounded-full bg-brand px-7 py-3 text-sm font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Submit trade-in
                 </button>
@@ -214,7 +213,7 @@ export function SellDevicePage() {
         <button
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0}
-          className="rounded border border-hairline px-4 py-2 text-sm text-ink disabled:opacity-40"
+          className="rounded-full border border-hairline px-5 py-2 text-sm text-ink disabled:opacity-40"
         >
           Back
         </button>
@@ -222,7 +221,7 @@ export function SellDevicePage() {
           <button
             onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
             disabled={!canAdvance}
-            className="rounded bg-ink px-4 py-2 text-sm text-white disabled:opacity-40"
+            className="rounded-full bg-ink px-5 py-2 text-sm text-white disabled:opacity-40"
           >
             Continue
           </button>

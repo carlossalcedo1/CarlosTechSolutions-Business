@@ -5,7 +5,7 @@ import { CATEGORIES } from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
 import type { Category, Condition } from "../types";
 
-const CONDITIONS: Condition[] = ["New", "Excellent", "Good", "Fair"];
+const CONDITIONS: Condition[] = ["New", "A+ - Excellent", "B - Good", "C - Fair"];
 const CHIPS: Array<Category | "All"> = ["All", ...CATEGORIES];
 
 type SortOption = "newest" | "price-asc" | "price-desc";
@@ -44,8 +44,8 @@ export function ShopPage() {
     });
 
     result = [...result].sort((a, b) => {
-      if (sort === "price-asc") return a.price - b.price;
-      if (sort === "price-desc") return b.price - a.price;
+      if (sort === "price-asc") return a.priceCents - b.priceCents;
+      if (sort === "price-desc") return b.priceCents - a.priceCents;
       return a.dateAdded < b.dateAdded ? 1 : -1;
     });
 
@@ -67,7 +67,7 @@ export function ShopPage() {
             <button
               key={chip}
               onClick={() => setCategory(chip)}
-              className={`rounded border px-3 py-1.5 text-sm ${
+              className={`rounded-full border px-4 py-1.5 text-sm ${
                 activeCategory === chip
                   ? "border-ink bg-ink text-white"
                   : "border-hairline text-ink hover:border-ink"

@@ -5,7 +5,7 @@ import { articles, type Article } from "../data/articles";
 const CATEGORIES: Article["category"][] = [
   "Orders",
   "Shipping",
-  "Warranty",
+  "Returns",
   "Trade-in",
   "Device unlocking",
 ];
@@ -32,6 +32,15 @@ export function HelpCenterPage() {
         &gt; <span className="text-ink">Help center</span>
       </nav>
 
+      {/* Work-in-progress notice — remove once the help content is settled. */}
+      <div className="mb-8 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-center text-sm text-red-700">
+        This part of the website is currently being worked on, please{" "}
+        <Link to="/contact" className="font-medium underline underline-offset-2">
+          reach out to us
+        </Link>{" "}
+        with any questions.
+      </div>
+
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-ink">Need help? We got you.</h1>
         <input
@@ -46,7 +55,7 @@ export function HelpCenterPage() {
             <button
               key={c}
               onClick={() => setCategory(category === c ? null : c)}
-              className={`rounded border px-3 py-1.5 text-sm ${
+              className={`rounded-full border px-4 py-1.5 text-sm ${
                 category === c ? "border-ink bg-ink text-white" : "border-hairline text-ink hover:border-ink"
               }`}
             >

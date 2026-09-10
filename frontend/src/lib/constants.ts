@@ -3,13 +3,15 @@ import type { Category } from "../types";
 // Single source of truth for the category list — used by the header nav
 // row, the homepage category tiles, and the shop page filter chips, so
 // they can never drift out of sync with each other.
-export const CATEGORIES: Category[] = [
-  "Phones",
-  "Tablets",
-  "Laptops",
-  "Desktops",
-  "Accessories",
-];
+export const CATEGORIES: Category[] = ["Phones", "Tablets", "Computers", "Accessories"];
 
-export const CONTACT_EMAIL = "hello@carlostech.com";
-export const CONTACT_PHONE = "(352) 555-0148";
+/**
+ * Two inboxes, split by what the message is asking for. Keeping them apart
+ * means a repair request never gets buried under "is this still available?"
+ * — and later, the API can route form submissions to the right one.
+ */
+/** Someone wants you to DO something: repair, unlock, trade-in, return, pickup. */
+export const REQUEST_EMAIL = "request@carlostechsolutions.com";
+/** Someone wants to KNOW something: availability, pricing, general questions. */
+export const INQUIRY_EMAIL = "inquiry@carlostechsolutions.com";
+export const CONTACT_PHONE = "(305) 763-2541";

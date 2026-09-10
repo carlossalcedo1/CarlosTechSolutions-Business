@@ -10,11 +10,10 @@
 export type Category =
   | "Phones"
   | "Tablets"
-  | "Laptops"
-  | "Desktops"
+  | "Computers"
   | "Accessories";
 
-export type Condition = "New" | "Excellent" | "Good" | "Fair";
+export type Condition = "New" | "A+ - Excellent" | "B - Good" | "C - Fair";
 
 export interface Item {
   id: string;
@@ -22,13 +21,13 @@ export interface Item {
   category: Category;
   brand: string;
   condition: Condition;
-  price: number;
+  /** Integer cents, never dollars — matches Stripe and avoids float math. */
+  priceCents: number;
   specs: string[];
   /** Short spec line shown on cards, e.g. "128GB . Unlocked" */
   specLine: string;
   description: string;
   images: string[];
-  factoryUnlocked: boolean;
   featured: boolean;
   dateAdded: string; // ISO date
 }

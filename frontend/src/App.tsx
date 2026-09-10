@@ -6,6 +6,8 @@ import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { SellDevicePage } from "./pages/SellDevicePage";
 import { AboutPage } from "./pages/AboutPage";
 import { ContactPage } from "./pages/ContactPage";
+import { ServicesPage } from "./pages/ServicesPage";
+import { ReturnPolicyPage } from "./pages/ReturnPolicyPage";
 import { HelpCenterPage } from "./pages/HelpCenterPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -18,11 +20,13 @@ export function App() {
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="shop" element={<ShopPage />} />
+          <Route path="services" element={<ServicesPage />} />
           <Route path="product/:id" element={<ProductDetailPage />} />
           <Route path="sell" element={<SellDevicePage />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="contact" element={<ContactPage />} />
           <Route path="help" element={<HelpCenterPage />} />
+          <Route path="returns" element={<ReturnPolicyPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

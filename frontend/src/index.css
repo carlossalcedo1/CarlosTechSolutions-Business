@@ -11,8 +11,13 @@
   --color-brand-dark: #1e3a8a;
   --color-ink: #111827;
   --color-muted: #6b7280;
-  --color-hairline: #e5e7eb;
-  --color-surface: #f9fafb;
+  /* Near-black used for full-bleed dark sections that break up the
+     cream/white rhythm on the homepage. */
+  --color-night: #101113;
+  /* Warm off-white rather than a cool gray — this is what gives the hero
+     and footer the cream tone from the reference design. */
+  --color-hairline: #e9e7e2;
+  --color-surface: #faf9f7;
 
   --font-sans: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }

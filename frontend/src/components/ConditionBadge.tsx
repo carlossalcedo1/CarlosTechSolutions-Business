@@ -2,9 +2,9 @@ import type { Condition } from "../types";
 
 const styles: Record<Condition, string> = {
   New: "bg-green-100 text-green-800",
-  Excellent: "bg-blue-100 text-blue-800",
-  Good: "bg-amber-100 text-amber-800",
-  Fair: "bg-gray-200 text-gray-700",
+  "A+ - Excellent": "bg-blue-100 text-blue-800",
+  "B - Good": "bg-amber-100 text-amber-800",
+  "C - Fair": "bg-gray-200 text-gray-700",
 };
 
 export function ConditionBadge({ condition }: { condition: Condition }) {

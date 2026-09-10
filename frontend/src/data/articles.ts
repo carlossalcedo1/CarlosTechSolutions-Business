@@ -3,7 +3,7 @@ export interface Article {
   title: string;
   slug: string;
   body: string;
-  category: "Orders" | "Shipping" | "Warranty" | "Trade-in" | "Device unlocking";
+  category: "Orders" | "Shipping" | "Returns" | "Trade-in" | "Device unlocking";
   tags: string[];
 }
 
@@ -13,7 +13,7 @@ export const articles: Article[] = [
     slug: "shipping-time",
     category: "Shipping",
     tags: ["shipping", "delivery"],
-    body: "Orders ship nationwide within 3-4 business days of purchase confirmation.",
+    body: "Orders placed on a business day ship the same day. Nationwide delivery usually lands within 3-4 days of dispatch.",
   },
   {
     title: "Do you ship outside Florida?",
@@ -30,11 +30,11 @@ export const articles: Article[] = [
     body: "Message us as soon as possible after ordering — we can usually make changes before an item ships.",
   },
   {
-    title: "What's covered under warranty?",
-    slug: "warranty-coverage",
-    category: "Warranty",
-    tags: ["warranty"],
-    body: "Every device includes a 90-day warranty covering hardware defects, plus 30-day returns.",
+    title: "What's covered if something goes wrong?",
+    slug: "returns-coverage",
+    category: "Returns",
+    tags: ["returns", "refunds", "faults"],
+    body: "You have 7 days from delivery to return a device for any reason, undisclosed hardware faults included — see the full return policy for details.",
   },
   {
     title: "How does the trade-in process work?",

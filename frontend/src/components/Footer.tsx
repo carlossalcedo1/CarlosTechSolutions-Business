@@ -1,72 +1,131 @@
 import { Link } from "react-router-dom";
-import { CONTACT_EMAIL, CONTACT_PHONE } from "../lib/constants";
+import { INQUIRY_EMAIL, CONTACT_PHONE } from "../lib/constants";
+import { CleanWayMark } from "./CleanWayMark";
+
+type FooterLink = {
+  label: string;
+  to: string;
+  /** Renders the leaf mark before the label (used for The Clean Way). */
+  mark?: boolean;
+};
+
+// Column structure mirrors the reference footer (brand block + three link
+// columns), with the columns reassigned to this business: what you can buy,
+// what you can hire us for, and who we are.
+const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
+  {
+    heading: "Shop",
+    links: [
+      { label: "All inventory", to: "/shop" },
+      { label: "Phones", to: "/shop?category=Phones" },
+      { label: "Tablets", to: "/shop?category=Tablets" },
+      { label: "Computers", to: "/shop?category=Computers" },
+      { label: "Accessories", to: "/shop?category=Accessories" },
+    ],
+  },
+  {
+    heading: "Services",
+    links: [
+      { label: "Device unlocking", to: "/services" },
+      { label: "Sell or trade in", to: "/sell" },
+      { label: "Fix your device", to: "/services" },
+      { label: "Return policy", to: "/returns" },
+    ],
+  },
+  {
+    heading: "Company",
+    links: [
+      { label: "About us", to: "/about" },
+      { label: "The Clean Way", to: "/about#clean-way", mark: true },
+      { label: "Help center", to: "/help" },
+      { label: "Contact", to: "/contact" },
+    ],
+  },
+];
 
 export function Footer() {
   return (
     <footer className="mt-auto border-t border-hairline bg-surface">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-8 px-4 py-10 text-sm sm:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-6 py-16 sm:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr]">
+        {/* Brand block */}
         <div>
-          <p className="font-semibold text-ink">Carlos Tech Solutions</p>
-          <p className="mt-2 text-muted">New, used, and recycled tech for an affordable audience.</p>
-        </div>
+          <Link to="/" className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded border border-hairline text-[10px] text-muted">
+              logo
+            </span>
+            <span className="text-xl font-bold tracking-tight text-ink">CarlosTechSolutions</span>
+          </Link>
 
-        <div>
-          <p className="font-semibold text-ink">Shop</p>
-          <ul className="mt-2 space-y-1 text-muted">
-            <li>
-              <Link to="/shop?category=Phones" className="hover:text-brand">
-                Phones
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?category=Laptops" className="hover:text-brand">
-                Laptops
-              </Link>
-            </li>
-            <li>
-              <Link to="/shop?category=Desktops" className="hover:text-brand">
-                Desktops
-              </Link>
-            </li>
-          </ul>
-        </div>
+          <p className="mt-5 max-w-xs text-[15px] leading-relaxed text-muted">
+            Your one stop shop for all your tech needs.
+          </p>
 
-        <div>
-          <p className="font-semibold text-ink">Support</p>
-          <ul className="mt-2 space-y-1 text-muted">
-            <li>
-              <Link to="/help" className="hover:text-brand">
-                Help center
-              </Link>
-            </li>
-            <li>
-              <Link to="/about#warranty" className="hover:text-brand">
-                Warranty
-              </Link>
-            </li>
-            <li>
-              <Link to="/contact" className="hover:text-brand">
-                Contact
-              </Link>
-            </li>
-          </ul>
-        </div>
+          <div className="mt-8">
+            <p className="font-semibold text-ink">Carlos Salcedo</p>
+            <ul className="mt-2 space-y-1.5 text-[15px] text-muted">
+              <li>
+                <a href={`mailto:${INQUIRY_EMAIL}`} className="hover:text-ink">
+                  {INQUIRY_EMAIL}
+                </a>
+              </li>
+              <li>
+                <a href={`tel:${CONTACT_PHONE}`} className="hover:text-ink">
+                  {CONTACT_PHONE}
+                </a>
+              </li>
+              <li>Gainesville, FL</li>
+            </ul>
 
-        <div>
-          <p className="font-semibold text-ink">Reach us</p>
-          <ul className="mt-2 space-y-1 text-muted">
-            <li>Gainesville and Miami, FL</li>
-            <li>
-              <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-brand">
-                {CONTACT_EMAIL}
+            <div className="mt-4 flex items-center gap-4 text-muted">
+              <a
+                href="https://www.facebook.com/marketplace"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Facebook Marketplace"
+                className="hover:text-ink"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0022 12z" />
+                </svg>
               </a>
-            </li>
-            <li>
-              <a href={`tel:${CONTACT_PHONE}`} className="hover:text-brand">
-                {CONTACT_PHONE}
+              <a href={`mailto:${INQUIRY_EMAIL}`} aria-label="Email" className="hover:text-ink">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
+                  <rect x="2.5" y="4.5" width="19" height="15" rx="2" />
+                  <path d="M3 6l9 6.5L21 6" />
+                </svg>
               </a>
-            </li>
-          </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Link columns */}
+        {COLUMNS.map((column) => (
+          <div key={column.heading}>
+            <p className="font-semibold text-ink">{column.heading}</p>
+            <ul className="mt-4 space-y-3 text-[15px] text-muted">
+              {column.links.map((link) => (
+                <li key={link.label}>
+                  <Link to={link.to} className="inline-flex items-center gap-1.5 hover:text-ink">
+                    {link.mark && <CleanWayMark className="h-4 w-4" />}
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-hairline">
+        <div className="mx-auto max-w-6xl px-6 py-5 text-xs text-muted">
+          &copy; {new Date().getFullYear()} CarlosTechSolutions. Ships nationwide.
         </div>
       </div>
     </footer>

@@ -1,32 +1,80 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { locations } from "../data/locations";
-import { CONTACT_EMAIL, CONTACT_PHONE } from "../lib/constants";
-import { PlaceholderImage } from "../components/PlaceholderImage";
+import { INQUIRY_EMAIL, REQUEST_EMAIL, CONTACT_PHONE } from "../lib/constants";
 
+// Apple's guide to locating an IMEI. Swap this for your own walkthrough
+// once you write one.
+const IMEI_GUIDE = "https://support.apple.com/en-us/108037?device-type=iphone";
+
+const REPAIR_TYPES = ["Battery", "Screen", "Back glass", "Other"];
+const REPAIR_BRANDS = ["Apple", "Samsung", "Computer", "Other"];
+
+/**
+ * One form, several jobs. Product pages and the services page link here with
+ * an `intent` so the buyer lands on a form that already knows why they came —
+ * repair requests get the device questions, unlock requests get the IMEI
+ * field, pickup requests get a written message. Everything collected here
+ * ends up in the email that reaches you.
+ */
 export function ContactPage() {
   const [searchParams] = useSearchParams();
   const prefillItem = searchParams.get("item");
+  const intent = searchParams.get("intent");
+
+  const isPickup = intent === "pickup";
+  const isRepair = intent === "repair";
+  const isUnlock = intent === "unlock";
 
   const [form, setForm] = useState({
     name: "",
     email: "",
-    message: prefillItem ? `Hi, I'm interested in the ${prefillItem}. Is it still available?` : "",
+    phone: "",
+    repairType: REPAIR_TYPES[0],
+    brand: REPAIR_BRANDS[0],
+    imei: "",
+    message: prefillItem
+      ? isPickup
+        ? `${prefillItem}\n\nI would like to arrange local pickup.`
+        : `Hi, I'm interested in the ${prefillItem}. Is it still available?`
+      : "",
   });
   const [sent, setSent] = useState(false);
 
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    // Stage 2 wires this to `POST /contact` (writes to `contact_messages`).
-    // For now this just confirms locally so the flow is demonstrable.
+    // Stage 2 posts this to `/api/contact`, which emails you via Resend.
+    // The repair and IMEI fields go in that payload as their own fields
+    // rather than being glued into the message text.
     setSent(true);
   }
+
+  const heading = isPickup
+    ? "Arrange local pickup"
+    : isRepair
+      ? "Request a repair quote"
+      : isUnlock
+        ? "Request a device unlock"
+        : "Send us a message";
+
+  // Repairs, unlocks and pickups are asking us to do something; everything
+  // else is a question. Show whichever inbox matches why they're here.
+  const directEmail = isRepair || isUnlock || isPickup ? REQUEST_EMAIL : INQUIRY_EMAIL;
+
+  const messageLabel = isRepair
+    ? "What's wrong with it?"
+    : isUnlock
+      ? "Anything else we should know?"
+      : "Message";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         <div>
-          <h1 className="text-xl font-semibold text-ink">Send us a message</h1>
+          <h1 className="text-xl font-semibold text-ink">{heading}</h1>
 
           {sent ? (
             <p className="mt-4 rounded border border-hairline bg-surface p-4 text-sm text-ink">
@@ -39,33 +87,110 @@ export function ContactPage() {
                 <input
                   required
                   value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  onChange={(e) => set("name", e.target.value)}
                   className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
                 />
               </div>
+
               <div>
                 <label className="text-sm text-muted">Email</label>
                 <input
                   required
                   type="email"
                   value={form.email}
-                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  onChange={(e) => set("email", e.target.value)}
                   className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
                 />
               </div>
+
               <div>
-                <label className="text-sm text-muted">Message</label>
+                <label className="text-sm text-muted">
+                  Phone <span className="text-muted/70">(optional)</span>
+                </label>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                  placeholder="Best number to reach you"
+                  className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
+                />
+              </div>
+
+              {isRepair && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-muted">What needs fixing?</label>
+                    <select
+                      value={form.repairType}
+                      onChange={(e) => set("repairType", e.target.value)}
+                      className="mt-1 w-full rounded border border-hairline bg-white px-3 py-2 text-sm"
+                    >
+                      {REPAIR_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm text-muted">Device</label>
+                    <select
+                      value={form.brand}
+                      onChange={(e) => set("brand", e.target.value)}
+                      className="mt-1 w-full rounded border border-hairline bg-white px-3 py-2 text-sm"
+                    >
+                      {REPAIR_BRANDS.map((brand) => (
+                        <option key={brand} value={brand}>
+                          {brand}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {isUnlock && (
+                <div>
+                  <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                    We only unlock Apple devices.
+                  </p>
+                  <label className="mt-3 block text-sm text-muted">IMEI number</label>
+                  <input
+                    required
+                    value={form.imei}
+                    onChange={(e) => set("imei", e.target.value)}
+                    placeholder="15 digits"
+                    inputMode="numeric"
+                    className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-muted">
+                    Not sure where to find it?{" "}
+                    <a
+                      href={IMEI_GUIDE}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-brand hover:underline"
+                    >
+                      Apple&apos;s guide to finding your IMEI
+                    </a>
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm text-muted">{messageLabel}</label>
                 <textarea
-                  required
+                  required={!isUnlock}
                   rows={5}
                   value={form.message}
-                  onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+                  onChange={(e) => set("message", e.target.value)}
                   className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
                 />
               </div>
+
               <button
                 type="submit"
-                className="rounded bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
+                className="rounded-full bg-brand px-7 py-3 text-sm font-medium text-white hover:bg-brand-dark"
               >
                 Send
               </button>
@@ -76,28 +201,21 @@ export function ContactPage() {
         <div>
           <h2 className="text-lg font-semibold text-ink">Direct contact</h2>
           <p className="mt-2 text-sm text-muted">
-            <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-brand">
-              {CONTACT_EMAIL}
+            <a href={`mailto:${directEmail}`} className="hover:text-brand">
+              {directEmail}
             </a>
           </p>
           <p className="text-sm text-muted">
             <a href={`tel:${CONTACT_PHONE}`} className="hover:text-brand">
               {CONTACT_PHONE}
-            </a>
+            </a>{" "}
+            <span className="text-muted/80">(Best way to reach me)</span>
           </p>
 
-          <h2 className="mt-6 text-lg font-semibold text-ink">Locations</h2>
-          <div className="mt-2 grid grid-cols-2 gap-3">
-            {locations.map((loc) => (
-              <div key={loc.city} className="overflow-hidden rounded border border-hairline">
-                <PlaceholderImage label={`${loc.city}, ${loc.state}`} className="h-24 w-full" />
-                <div className="p-2 text-xs text-muted">
-                  <p>{loc.hours}</p>
-                  <p>{loc.phone}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2 className="mt-6 text-lg font-semibold text-ink">When to reach us</h2>
+          <p className="mt-2 text-sm text-muted">
+            Recommended hours of contact are 10AM - 10PM EST.
+          </p>
         </div>
       </div>
     </div>
