@@ -49,9 +49,10 @@ export function Header() {
           the *row*, not just centered in whatever space is left over. */}
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-4 sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-x-8 sm:gap-y-3">
         <Link to="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded border border-hairline text-[10px] text-muted">
-            logo
-          </span>
+          {/* Temporary placeholder logo — swap /public/logo.png for the
+              real mark whenever it's ready (see LAUNCH_CHECKLIST.md
+              Phase 7: "Logo mark for the reserved slot"). */}
+          <img src="/logo.png" alt="" className="h-9 w-9 rounded border border-hairline object-cover" />
           <span className="text-lg font-bold tracking-tight text-ink">CarlosTechSolutions</span>
         </Link>
 
@@ -78,9 +79,7 @@ export function Header() {
             is already wrapping, and reserving a matching logo-width slot
             would just steal space the nav needs to wrap into. */}
         <div aria-hidden className="hidden shrink-0 items-center gap-2 opacity-0 sm:flex">
-          <span className="flex h-9 w-9 items-center justify-center rounded border border-hairline text-[10px]">
-            logo
-          </span>
+          <img src="/logo.png" alt="" className="h-9 w-9 rounded border border-hairline object-cover" />
           <span className="text-lg font-bold tracking-tight">CarlosTechSolutions</span>
         </div>
       </div>
