@@ -9,8 +9,8 @@ const SLIDES = [
   { src: "/carousel/IMG_5624.jpg", caption: "Every repair starts here" },
   { src: "/carousel/IMG_5627.jpg", caption: "Cracked back glass? We fix that." },
   { src: "/carousel/IMG_5628.jpg", caption: "iPhone 13 mini — full teardown" },
-  { src: "/carousel/IMG_5629.jpg", caption: "Battery replacement, done right" },
-  { src: "/carousel/IMG_5630.jpg", caption: "Complete destruction? No problem." },
+  { src: "/carousel/IMG_5629.jpg", caption: "Looking good again" },
+  { src: "/carousel/IMG_5630.jpg", caption: "Battery replacement, done right" },
 ];
 
 // Manual only — no auto-advance. Arrows + dots are the only way through.
