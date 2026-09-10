@@ -56,7 +56,7 @@ export function Header() {
               it's ready (see LAUNCH_CHECKLIST.md Phase 7: "Logo mark for
               the reserved slot"). */}
           <img src="/logo.svg" alt="" className="h-9 w-9" />
-          <span className="text-lg font-bold tracking-tight text-ink">CarlosTechSolutions</span>
+          <span className="text-3xl font-bold tracking-tight text-ink">CarlosTechSolutions</span>
         </Link>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[15px]">
@@ -83,7 +83,7 @@ export function Header() {
             would just steal space the nav needs to wrap into. */}
         <div aria-hidden className="hidden shrink-0 items-center gap-2 opacity-0 sm:flex">
           <img src="/logo.svg" alt="" className="h-9 w-9" />
-          <span className="text-lg font-bold tracking-tight">CarlosTechSolutions</span>
+          <span className="text-3xl font-bold tracking-tight">CarlosTechSolutions</span>
         </div>
       </div>
     </header>
