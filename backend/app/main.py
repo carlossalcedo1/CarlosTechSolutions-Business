@@ -109,7 +109,10 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
         return {"received": True, "duplicate": True}
 
     if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
+        # .to_dict() on purpose: stripe.Event's nested objects support bracket
+        # access but not .get() (they raise, telling you to convert) — easiest
+        # to convert once here rather than bracket-access every field below.
+        session = event["data"]["object"].to_dict()
         item_id = (session.get("metadata") or {}).get("item_id")
         item = request.app.state.catalog.get(item_id) if item_id else None
 
