@@ -15,6 +15,13 @@ venv/
 # and on the server this is a mounted volume anyway (see Phase 5).
 backend/data/
 
+# Inventory — local to each computer by choice, never synced through git.
+# Copy these two by hand to move inventory between machines or onto the
+# server before a deploy (see docs/ADDING_INVENTORY.md). A fresh clone gets
+# an empty catalog from frontend/scripts/ensure-catalog.mjs.
+frontend/src/data/items.json
+frontend/public/items/
+
 # OS / editor cruft
 .DS_Store
 *.swp

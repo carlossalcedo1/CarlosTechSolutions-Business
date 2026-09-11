@@ -10,6 +10,8 @@ import { CheckoutSuccessPage } from "./pages/CheckoutSuccessPage";
 import { CheckoutCancelledPage } from "./pages/CheckoutCancelledPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { ReturnPolicyPage } from "./pages/ReturnPolicyPage";
+import { TermsPage } from "./pages/TermsPage";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { HelpCenterPage } from "./pages/HelpCenterPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ScrollToTop } from "./components/ScrollToTop";
@@ -31,6 +33,8 @@ export function App() {
           <Route path="checkout/cancelled" element={<CheckoutCancelledPage />} />
           <Route path="help" element={<HelpCenterPage />} />
           <Route path="returns" element={<ReturnPolicyPage />} />
+          <Route path="terms" element={<TermsPage />} />
+          <Route path="privacy" element={<PrivacyPolicyPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

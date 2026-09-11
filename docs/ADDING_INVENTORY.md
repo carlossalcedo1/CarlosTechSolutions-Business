@@ -77,8 +77,8 @@ at intake means the format question never reaches the website.
 Three things happen automatically to each photo:
 
 - **Resized** to 1600px wide and compressed. A 4MB camera shot lands around
-  100-200KB. Photos go into git, and git never forgets a large file — shrinking
-  them later doesn't shrink the repo, so they get shrunk on the way in
+  100-200KB, which keeps pages fast and makes copying inventory between
+  computers quick
 - **Rotated upright.** Phones store rotation as an EXIF flag rather than
   rotating the actual pixels, so portrait shots would otherwise appear sideways
   on the site
@@ -96,6 +96,25 @@ cd frontend && npm run dev
 ```
 
 Look at the item, then deploy when you're happy with it.
+
+## Inventory lives on your computer, not in git
+
+The catalog and its photos are gitignored, so each computer keeps its own
+copy and `git pull` never brings inventory along. To move it — to another
+computer, or onto the server before a deploy — copy both by hand:
+
+- `frontend/src/data/items.json` — the catalog
+- `frontend/public/items/` — the photos
+
+Copy them together: an item whose photo folder didn't come along shows
+broken images.
+
+- **On the server,** `deploy.sh` stops with a clear message if the catalog is
+  missing, rather than shipping an empty store by accident
+- **On a fresh clone,** `npm run dev` / `npm run build` create an empty
+  catalog so the site still runs, and `add_item.py` starts from it
+- **Back it up yourself.** Git isn't keeping history of it anymore, so drop a
+  copy of both into iCloud/Dropbox after each batch you add
 
 ## Fixing or removing an item
 

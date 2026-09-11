@@ -2,6 +2,10 @@
 // with `python backend/scripts/add_item.py`, which validates every field
 // against the same Pydantic model the checkout endpoint uses.
 //
+// items.json is gitignored: inventory is local to each computer (see
+// docs/ADDING_INVENTORY.md). scripts/ensure-catalog.mjs creates an empty
+// one before dev/build if it's missing, so this import always resolves.
+//
 // The cast below is deliberate: JSON imports widen "Tablets" to `string`, so
 // TypeScript can't confirm the union fields on its own. The real guarantee
 // comes from the Python side — the CLI refuses to write an invalid item, and

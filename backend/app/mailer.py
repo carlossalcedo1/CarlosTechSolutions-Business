@@ -37,10 +37,15 @@ def send_email(
     *,
     to: str,
     subject: str,
-    html: str,
+    html: str | None = None,
     text: str | None = None,
     reply_to: str | None = None,
 ) -> None:
+    # Either or both: HTML with an auto-derived text part (the form
+    # notifications), or text only (the admin "Sold" alert — see emails.py).
+    if html is None and text is None:
+        raise ValueError("send_email needs html, text, or both")
+
     if not settings.resend_api_key:
         # Lets the rest of the app run and be tested before the Resend key
         # exists (see LAUNCH_CHECKLIST.md Phase 2) instead of crashing.
@@ -52,9 +57,10 @@ def send_email(
         "from": settings.sender_address,
         "to": [to],
         "subject": subject,
-        "html": html,
         "text": text if text is not None else _html_to_text(html),
     }
+    if html is not None:
+        payload["html"] = html
     if reply_to:
         payload["reply_to"] = reply_to
     resend.Emails.send(payload)

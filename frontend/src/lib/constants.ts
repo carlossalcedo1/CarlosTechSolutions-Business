@@ -20,3 +20,4 @@ export const CONTACT_PHONE = "(305) 763-2541";
 // kept as one source here too so it's not hand-typed twice across repos.
 export const FACEBOOK_MARKETPLACE_URL =
   "https://www.facebook.com/marketplace/profile/100038115972128/";
+export const EBAY_PROFILE_URL = "https://www.ebay.com/usr/jcsal1963";

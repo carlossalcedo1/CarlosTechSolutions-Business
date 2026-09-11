@@ -1,5 +1,9 @@
+import { Link } from "react-router-dom";
 import { CleanWayMark } from "../components/CleanWayMark";
+import { LockScreenMockups } from "../components/LockScreenMockups";
 import { ProjectsSection } from "../components/ProjectsSection";
+
+const linkClass = "text-sm font-medium text-brand hover:underline";
 
 export function AboutPage() {
   return (
@@ -32,6 +36,46 @@ export function AboutPage() {
             fleets - devices that would otherwise be scrapped as e-waste. We verify, unlock, and test
             each one before it&apos;s listed, so what you&apos;re buying is safe, legal, and fully usable.
           </p>
+
+          {/* Same "twin divide" as ProjectsSplit: the two lock screens on the
+              left, what they mean on the right, stacking on narrow screens. */}
+          <div className="mt-8 grid gap-8 md:grid-cols-2 md:gap-0 md:divide-x md:divide-hairline">
+            <div className="md:pr-10">
+              <LockScreenMockups />
+            </div>
+
+            <div className="flex flex-col justify-center md:pl-10">
+              <p className="text-ink">
+                Most locked devices aren&apos;t stolen - they&apos;re forgotten. In our experience,
+                about 95% of the time the original user simply forgot to sign out before the device
+                changed hands, and by the time it reaches us the original owner can no longer be
+                reached. Without that sign-out,{" "}
+                <a
+                  href="https://support.apple.com/en-us/108794"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  Apple&apos;s Activation Lock
+                </a>{" "}
+                leaves a perfectly good device bricked. Unlocking it puts that hardware back into
+                use instead of the landfill, and it&apos;s how we can offer it at a lower price point.
+              </p>
+
+              <p className="mt-5 text-sm leading-relaxed text-muted">
+                How unlocking, trade-ins, and returns work is covered in our terms, and what we do
+                with your information is in our privacy policy.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+                <Link to="/terms" className={linkClass}>
+                  Terms of service &rarr;
+                </Link>
+                <Link to="/privacy" className={linkClass}>
+                  Privacy policy &rarr;
+                </Link>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
 

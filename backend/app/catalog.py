@@ -23,6 +23,12 @@ _ADAPTER = TypeAdapter(list[Item])
 
 def load_catalog(path: Path | None = None) -> list[Item]:
     target = path or CATALOG_PATH
+    # items.json is gitignored (inventory is local to each computer), so a
+    # fresh clone has none — that's an empty store, not an error, and it
+    # lets add_item.py start the file. A file that exists but doesn't
+    # validate still fails loudly, as above.
+    if not target.exists():
+        return []
     return _ADAPTER.validate_json(target.read_text())
 
 

@@ -11,7 +11,9 @@ webhook without one.
 **Done**
 
 - [x] Frontend — every page, static build, ~85KB gzipped
-- [x] Catalog — `items.json`, validated by a shared Pydantic model
+- [x] Catalog — `items.json`, validated by a shared Pydantic model. Gitignored
+      along with `public/items/`: inventory is local to each computer, copied
+      by hand (see `docs/ADDING_INVENTORY.md`)
 - [x] `add_item.py` CLI — HEIC/EXIF/resize handled, photos render on the site
 - [x] Prices stored as integer cents (Stripe-native, no float bugs)
 - [x] `request@` / `inquiry@` wired through the UI
@@ -20,14 +22,15 @@ webhook without one.
 - [x] Server running Docker + Caddy
 - [x] Everything committed to git (Phase 0)
 - [x] Backend service skeleton — all 5 routes, builds + smoke-tested in Docker (Phase 1)
+- [x] Resend wired in — contact and trade-in emails confirmed landing (Phase 2)
+- [x] Stripe test mode end to end — checkout, webhook, sold state (Phase 3)
+- [x] Deploy pipeline — live on staging at shop.carlostechsolutions.com (Phase 5)
+- [x] Terms of service, privacy policy, and return policy pages (Phase 6)
 
-**Not built yet**
+**Not done yet**
 
-- [ ] Real Stripe keys wired in (routes exist, return 500 until `STRIPE_SECRET_KEY` /
-      `STRIPE_WEBHOOK_SECRET` are set)
-- [ ] Real Resend key wired in (routes exist, skip sending until `RESEND_API_KEY` is set)
+- [ ] Stripe live mode — account activation, live keys, live webhook (Phase 8)
 - [ ] Any real payment
-- [ ] Deploy pipeline (docker-compose + Caddy integration — Phase 5)
 
 ---
 
@@ -104,15 +107,17 @@ The real flow is:
 form submit → POST /api/contact → server holds the key → Resend → your inbox
 ```
 
-- [ ] Wire `/api/contact`, `/api/trade-in`, `/api/subscribe` to Resend
-- [ ] Set `reply_to` to the customer's address so you can reply straight from
+- [x] Wire `/api/contact`, `/api/trade-in` to Resend (`/api/subscribe` only
+      records the email for now, on purpose — see the note below)
+- [x] Set `reply_to` to the customer's address so you can reply straight from
       your inbox instead of copy-pasting
-- [ ] Include the structured fields the forms already collect (repair type,
+- [x] Include the structured fields the forms already collect (repair type,
       device brand, IMEI, phone) as labelled lines — not buried in prose
-- [ ] **Honeypot field + rate limit.** A public POST endpoint attached to an
+- [x] **Honeypot field + rate limit.** A public POST endpoint attached to an
       email sender gets found by bots. A hidden field real users never fill in
       catches most of it; a per-IP limit catches the rest
-- [ ] Sanity-check: no HTML injection from form input into the email body
+- [x] Sanity-check: no HTML injection from form input into the email body —
+      every field goes through `html.escape` in `main.py`
 
 > **Marketing email (new-listing digest) moved to Stretch goals** — see the
 > bottom of this file. `/api/subscribe` still needs to exist for Phase 1/4 (the
@@ -139,7 +144,6 @@ form submit → POST /api/contact → server holds the key → Resend → your i
       handler 500'd on every real event before this fix
 - [x] **Make the webhook idempotent.** — verified: redelivering the same
       event twice only processes it once
-- [ ] Turn on Stripe's own receipt emails — dashboard setting, not code
 - [x] Test the full path with card `4242 4242 4242 4242` — real test-mode
       purchase completed (USB-C Hub, $29.00), confirmed `paid`/`complete`
       directly via the Stripe API
@@ -149,10 +153,8 @@ form submit → POST /api/contact → server holds the key → Resend → your i
 
 ### Then, to accept real money
 
-- [ ] Activate the account: identity verification, bank details
-- [ ] Swap to live keys, held only in the server `.env`
-- [ ] Register the live webhook endpoint URL in the Stripe dashboard
-- [ ] One real £/$ transaction to yourself, then refund it
+Moved to **Phase 8 — Stripe live mode** at the end of this file, so every
+live-mode step (including the receipt-email setting) is in one place.
 
 ---
 
@@ -223,8 +225,7 @@ including cache headers and the SPA fallback.
       (`we_1UE0ZqGSTdDz3MK8ZkdSq7L3` → `https://shop.carlostechsolutions.com/api/stripe-webhook`)
       — `stripe listen` is no longer needed for ongoing test purchases;
       confirmed with a real `stripe trigger` event, signature verified,
-      200. (Swapping to the *live* endpoint is Phase 3's "Then, to accept
-      real money" section, separate from this.)
+      200. (Swapping to the *live* endpoint is Phase 8, separate from this.)
 - [ ] Rollback: currently none — Caddy bind-mounts `frontend/dist` directly,
       same as promptworks, so a bad deploy needs a new build to fix rather
       than a symlink flip. Worth adding a timestamped-dir + symlink-swap
@@ -246,32 +247,69 @@ DNS-only, or use Full (strict) with a Cloudflare Origin certificate. Also make
 sure `/api/*` isn't cached — a cached checkout response would be its own
 adventure.
 
-- [ ] Confirm the Stripe webhook URL is reachable from outside (Stripe's
-      dashboard has a test-send button)
-
 ---
 
 ## Phase 6 — Before real money moves
 
-- [ ] **Terms of service** and **privacy policy** pages — Stripe expects them,
-      and the privacy policy is not optional once you're collecting emails
-- [ ] Review the return policy line by line. It's a draft I wrote; you'll be
-      held to the 15% restocking fee and the "equal or greater value" swap
-- [ ] Sales tax on Florida buyers — Stripe Tax can calculate it, but *whether
-      you must collect* is a question for an accountant, not for code
-- [ ] Keep your Clean Way paperwork (proof of purchase, IMEI checks). Chargeback
-      disputes on used electronics are decided on the seller's evidence
+**Done** — the only thing left before real money is Stripe live mode itself
+(Phase 8).
+
+- [x] **Terms of service** and **privacy policy** pages — `/terms` and
+      `/privacy`, linked from the footer and The Clean Way on the About page.
+      The privacy policy describes what the code actually does (no cookies or
+      analytics); update it if that ever changes
+- [x] Review the return policy line by line — reviewed and approved
+- [x] Sales tax on Florida buyers — decided: not collecting for now. Revisit
+      with an accountant; Stripe Tax can calculate it if that changes
+- [x] Keep your Clean Way paperwork (proof of purchase, IMEI checks). Chargeback
+      disputes on used electronics are decided on the seller's evidence —
+      an ongoing habit, not a one-time task
 
 ---
 
 ## Phase 7 — Content
 
-- [ ] Replace the 13 mock items with real inventory (`add_item.py`)
+- [ ] Replace the 13 mock items with real inventory (`add_item.py`) — mock
+      items deleted, `items.json` is now empty; add the real ones
 - [ ] Real photos — the placeholder boxes are the most obvious "unfinished" tell
 - [ ] Write the About page bio (still placeholder text)
 - [ ] Logo mark for the reserved slot in the header and footer
 - [ ] Rewrite the Services and RhinoTrade copy in your own voice
 - [ ] PromptWorks URL into `projects.ts` so those links go somewhere
+
+---
+
+## Phase 8 — Stripe live mode
+
+The last step before real money. Checkout, the webhook, sold state, and both
+sale emails are already built and tested in test mode — this is dashboard
+setup plus two env vars, no code changes.
+
+- [ ] Activate the account: identity verification, bank details
+- [ ] Public business details (Settings → Business → Public details): support
+      email and phone, plus the policy URLs —
+      `https://shop.carlostechsolutions.com/terms` and `/privacy`
+- [ ] Set the statement descriptor to something buyers will recognize on
+      their card statement (e.g. `CARLOSTECH`) — a charge nobody recognizes
+      turns into a chargeback
+- [ ] Turn on Stripe's own receipt emails (Settings → Customer emails →
+      Successful payments). The buyer's "Congrats!" email says a Stripe
+      receipt is coming separately, so this has to be on
+- [ ] Create the **live** webhook endpoint (Developers → Webhooks, with the
+      dashboard in live mode): `https://shop.carlostechsolutions.com/api/stripe-webhook`,
+      event `checkout.session.completed`
+- [ ] In `deploy/.env` on the server: `STRIPE_SECRET_KEY=sk_live_...` and the
+      live endpoint's own `STRIPE_WEBHOOK_SECRET=whsec_...` — the test-mode
+      `whsec_` will reject every live event. Then run `deploy.sh`
+- [ ] Send a test event from the live endpoint's page in the dashboard and
+      confirm it returns 200 (proves the live URL is reachable from outside)
+- [ ] One real purchase to yourself, then refund it. Confirm the buyer
+      "Congrats!" email and the "Sold" alert both arrive, and the item shows
+      as Sold on the site
+- [ ] Un-sell that test item afterward: a refund doesn't undo the sold mark.
+      Remove its id from `sold_item_ids` in `sold_state.json` on the `api`
+      volume (read on every request, so no restart needed) — or build the
+      `mark_sold.py` CLI from "Shortly after" with an unmark option
 
 ---
 
@@ -302,7 +340,8 @@ All server-side. None of these ever reach the browser.
 
 ## Shortly after
 
-- [ ] Back up the sold-state file — the catalog is in git, that file isn't
+- [ ] Back up the sold-state file and the catalog (`items.json` +
+      `public/items/`) — neither is in git
 - [ ] Uptime monitoring — self-hosted means nobody else notices it's down
 - [ ] A `mark_sold.py` CLI for devices you sell in person, off-site
 
@@ -335,8 +374,21 @@ Different from transactional email, and legally so — don't build this casually
 - [x] Plain-text alternative alongside HTML — done now (small spam-score
       signal, cheap to fix): `mailer.send_email` auto-derives a text part
       from the HTML body unless one is passed explicitly
-- [ ] Actual designed HTML templates instead of plain `<p>` paragraphs
+- [x] Actual designed HTML templates instead of plain `<p>` paragraphs — the
+      buyer's "Congrats!" email (item, price paid, next steps, return and
+      privacy policy links at the bottom) lives in `backend/app/emails.py`. The
+      "Sold" alert stays plain text on purpose: admin-only, just descriptive
 - [ ] BIMI (logo next to the email in the inbox) — needs DMARC at
       `quarantine`/`reject` (we're at `none` on purpose for now) and, to
       actually render in Gmail, a paid Verified Mark Certificate tied to a
       registered trademark. Skip unless that math changes.
+
+### Content upkeep
+
+- [x] Edit the email templates — done: both sale emails now live in
+      `backend/app/emails.py` (see "Actual designed HTML templates" above).
+      Future wording changes go there, not in `main.py`
+- [ ] Edit the FAQ — the help center articles live in
+      `frontend/src/data/articles.ts`
+- [ ] Keep adding items to the catalog with `add_item.py` — see
+      `docs/ADDING_INVENTORY.md`

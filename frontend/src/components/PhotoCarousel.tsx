@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 // Real photos off the actual repair bench (not stock/placeholder) — see
 // LAUNCH_CHECKLIST.md Phase 7's "real photos" item, partially crossed off
@@ -13,27 +13,51 @@ const SLIDES = [
   { src: "/carousel/IMG_5630.jpg", caption: "Looking good again." },
 ];
 
-// Manual only — no auto-advance. Arrows + dots are the only way through.
+// Manual only — no auto-advance. The slides sit in a native scroll-snap
+// track, so swiping (touch or trackpad) just works with real momentum and no
+// gesture code. Arrows and dots scroll that same track, and the current
+// index is read back from the scroll position, so all three stay in sync.
 export function PhotoCarousel() {
+  const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
 
-  function go(delta: number) {
-    setIndex((i) => (i + delta + SLIDES.length) % SLIDES.length);
+  function scrollToSlide(i: number) {
+    const track = trackRef.current;
+    if (!track) return;
+    track.scrollTo({ left: i * track.clientWidth, behavior: "smooth" });
   }
 
-  const slide = SLIDES[index];
+  function go(delta: number) {
+    scrollToSlide((index + delta + SLIDES.length) % SLIDES.length);
+  }
+
+  function handleScroll() {
+    const track = trackRef.current;
+    if (!track) return;
+    setIndex(Math.round(track.scrollLeft / track.clientWidth));
+  }
 
   return (
     <div className="mt-16">
       <h2 className="text-center text-lg font-semibold text-ink">Here&apos;s some recent repairs</h2>
 
       <div className="relative mt-4 overflow-hidden rounded-xl border border-hairline">
-        <img
-          key={slide.src}
-          src={slide.src}
-          alt={slide.caption}
-          className="h-56 w-full object-cover sm:h-96"
-        />
+        <div
+          ref={trackRef}
+          onScroll={handleScroll}
+          className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {SLIDES.map((s, i) => (
+            <img
+              key={s.src}
+              src={s.src}
+              alt={s.caption}
+              loading={i === 0 ? "eager" : "lazy"}
+              draggable={false}
+              className="h-56 w-full shrink-0 snap-center object-cover sm:h-96"
+            />
+          ))}
+        </div>
 
         <button
           onClick={() => go(-1)}
@@ -59,13 +83,13 @@ export function PhotoCarousel() {
           text-center explicitly, rather than relying on this component's
           parent happening to set it — this should center regardless of
           where PhotoCarousel is used. */}
-      <p className="mt-3 text-center text-sm font-medium text-ink">{slide.caption}</p>
+      <p className="mt-3 text-center text-sm font-medium text-ink">{SLIDES[index].caption}</p>
 
       <div className="mt-2 flex justify-center gap-1.5">
         {SLIDES.map((s, i) => (
           <button
             key={s.src}
-            onClick={() => setIndex(i)}
+            onClick={() => scrollToSlide(i)}
             aria-label={`Go to photo ${i + 1}`}
             className={`h-1.5 w-1.5 rounded-full transition ${
               i === index ? "bg-ink" : "bg-hairline"

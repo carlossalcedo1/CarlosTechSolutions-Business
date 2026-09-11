@@ -124,8 +124,16 @@ export function Footer() {
       </div>
 
       <div className="border-t border-hairline">
-        <div className="mx-auto max-w-6xl px-6 py-5 text-xs text-muted">
-          &copy; {new Date().getFullYear()} CarlosTechSolutions. Ships nationwide.
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-5 text-xs text-muted sm:flex-row sm:justify-between">
+          <p>&copy; {new Date().getFullYear()} CarlosTechSolutions. Ships nationwide.</p>
+          <div className="flex gap-4">
+            <Link to="/terms" className="hover:text-ink">
+              Terms of service
+            </Link>
+            <Link to="/privacy" className="hover:text-ink">
+              Privacy policy
+            </Link>
+          </div>
         </div>
       </div>
     </footer>

@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import load_catalog
 from .config import Settings, get_settings
+from .emails import buyer_confirmation, sale_alert
 from .mailer import send_email
 from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
@@ -134,21 +135,26 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
 
             buyer_email = (session.get("customer_details") or {}).get("email")
             if buyer_email:
+                subject, body_html, body_text = buyer_confirmation(
+                    item,
+                    # What Stripe actually charged, not the catalog price —
+                    # the email says "price paid", so it should be exact.
+                    amount_paid_cents=session.get("amount_total") or item.priceCents,
+                    site_url=settings.site_url,
+                )
                 send_email(
                     settings,
                     to=buyer_email,
-                    subject=f"Congrats on your {item.name}!",
-                    html=f"<p>Congrats — your order for {html.escape(item.name)} is confirmed. "
-                    "You'll get a separate receipt from Stripe.</p>",
+                    subject=subject,
+                    html=body_html,
+                    text=body_text,
+                    # Sender is noreply@; the email says "reply to this
+                    # email", so replies need to land in a real inbox.
+                    reply_to=settings.notify_email or None,
                 )
             if settings.sale_notify_address:
-                send_email(
-                    settings,
-                    to=settings.sale_notify_address,
-                    subject=f"Sold: {item.name}",
-                    html=f"<p>{html.escape(item.name)} ({item.id}) just sold for "
-                    f"{item.price_display}.</p>",
-                )
+                subject, body_text = sale_alert(item, session)
+                send_email(settings, to=settings.sale_notify_address, subject=subject, text=body_text)
 
     store.mark_processed(event["id"])
     return {"received": True}

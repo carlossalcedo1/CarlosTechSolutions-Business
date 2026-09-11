@@ -29,6 +29,14 @@ export function CheckoutSuccessPage() {
         Thanks for your order — a confirmation email is on its way. Stripe will also send its own
         payment receipt separately.
       </p>
+      {/* The confirmation comes from a brand-new sending domain, so the
+          first one can land in spam. Asking now saves a "did my order go
+          through?" message later. */}
+      <p className="mx-auto mt-5 max-w-md rounded-lg border border-hairline bg-surface px-4 py-3 text-sm text-muted">
+        <span className="font-medium text-ink">Don&apos;t see it in a few minutes?</span> Check your
+        spam or junk folder, and mark it &ldquo;Not spam&rdquo; so future emails from us reach your
+        inbox.
+      </p>
       {sessionId && (
         <p className="mt-4 text-xs text-muted">
           Order reference: <span className="font-mono">{sessionId}</span>

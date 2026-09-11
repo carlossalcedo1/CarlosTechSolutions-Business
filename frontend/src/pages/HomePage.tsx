@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { items } from "../data/items";
-import { CATEGORIES, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
+import { CATEGORIES, EBAY_PROFILE_URL, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
 import { PhotoCarousel } from "../components/PhotoCarousel";
 import { CleanWayMark } from "../components/CleanWayMark";
 import { ProjectsSection } from "../components/ProjectsSection";
+import { OtherMarketplaces } from "../components/OtherMarketplaces";
 import { subscribe, ApiError } from "../lib/api";
 import { useSoldItemIds } from "../lib/useSoldItemIds";
 
@@ -128,26 +129,39 @@ export function HomePage() {
             </Link>
           </div>
 
-          {/* Link-out card rather than embedded reviews — Facebook
-              Marketplace has no public embed widget for profile reviews,
-              and showing specific ratings/quotes here without real ones to
-              cite would just be making them up. */}
-          <a
-            href={FACEBOOK_MARKETPLACE_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-16 flex items-center justify-center gap-3 rounded-xl border border-hairline bg-white px-6 py-6 text-center transition hover:border-ink sm:py-8"
-          >
-            <span aria-hidden className="text-2xl">
-              &#11088;
-            </span>
-            <span>
-              <span className="block font-semibold text-ink">Rated by real buyers</span>
-              <span className="mt-1 block text-sm text-muted">
-                See our reviews on Facebook Marketplace <span aria-hidden>&rarr;</span>
-              </span>
-            </span>
-          </a>
+          {/* Link-out cards rather than embedded reviews — neither eBay nor
+              Facebook Marketplace has a public embed widget for profile
+              reviews, and showing specific ratings/quotes here without real
+              ones to cite would just be making them up. One card split in
+              two, stacking on narrow screens. */}
+          <div className="mt-16 grid divide-y divide-hairline overflow-hidden rounded-xl border border-hairline bg-white sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            {[
+              { href: EBAY_PROFILE_URL, title: "Rated on eBay", sub: "See our feedback on eBay" },
+              {
+                href: FACEBOOK_MARKETPLACE_URL,
+                title: "Rated on Facebook",
+                sub: "See our reviews on Facebook Marketplace",
+              },
+            ].map((review) => (
+              <a
+                key={review.href}
+                href={review.href}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-3 px-6 py-6 text-center transition hover:bg-surface sm:py-8"
+              >
+                <span aria-hidden className="text-2xl">
+                  &#11088;
+                </span>
+                <span>
+                  <span className="block font-semibold text-ink">{review.title}</span>
+                  <span className="mt-1 block text-sm text-muted">
+                    {review.sub} <span aria-hidden>&rarr;</span>
+                  </span>
+                </span>
+              </a>
+            ))}
+          </div>
 
           <PhotoCarousel />
         </div>
@@ -226,11 +240,18 @@ export function HomePage() {
       <section className="bg-white">
         <div className="mx-auto max-w-6xl px-6 py-20">
           <h2 className="text-2xl font-bold tracking-tight text-ink">Recently listed</h2>
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {recentlyListed.map((item) => (
-              <ProductCard key={item.id} item={item} />
-            ))}
-          </div>
+          {recentlyListed.length > 0 ? (
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {recentlyListed.map((item) => (
+                <ProductCard key={item.id} item={item} />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-6 text-muted">
+              New inventory is on the way — check back soon, or subscribe below to get an email
+              when it lands.
+            </p>
+          )}
 
           {/* New-listing email signup */}
           <div className="mx-auto mt-12 max-w-xl rounded-2xl border border-hairline bg-surface px-6 py-8 text-center">
@@ -269,6 +290,26 @@ export function HomePage() {
               <p className="mt-3 text-sm text-red-700">{subscribeError}</p>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* Other marketplaces — same split as "Why buy from us": heading on the
+          left, 2x2 hairline grid on the right. */}
+      <section className="border-t border-hairline bg-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-20 lg:grid-cols-2 lg:gap-16">
+          <div>
+            <p className={`${eyebrow} text-muted`}>Other marketplaces</p>
+            <h2 className={`${sectionHeading} mt-4 text-ink`}>
+              Already shop
+              <br />
+              somewhere else?
+            </h2>
+            <p className="mt-5 max-w-md leading-relaxed text-muted">
+              You can find our devices on the marketplaces you already use, too.
+            </p>
+          </div>
+
+          <OtherMarketplaces />
         </div>
       </section>
 

@@ -133,6 +133,10 @@ export function ShopPage() {
             <ProductCard key={item.id} item={item} sold={soldIds.has(item.id)} />
           ))}
         </div>
+      ) : items.length === 0 ? (
+        // Empty catalog (between inventory batches) vs. filters hiding
+        // everything — different messages, since "clear a filter" won't help.
+        <p className="mt-8 text-muted">New inventory is on the way — check back soon.</p>
       ) : (
         <p className="mt-8 text-muted">No items match those filters yet — try clearing one.</p>
       )}
