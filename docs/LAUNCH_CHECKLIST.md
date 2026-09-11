@@ -392,3 +392,5 @@ Different from transactional email, and legally so — don't build this casually
       `frontend/src/data/articles.ts`
 - [ ] Keep adding items to the catalog with `add_item.py` — see
       `docs/ADDING_INVENTORY.md`
+
+- [ ] About me Section - complete
