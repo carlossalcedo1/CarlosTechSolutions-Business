@@ -20,6 +20,8 @@ export interface Item {
   name: string;
   category: Category;
   brand: string;
+  model: string;
+  storage: string;
   condition: Condition;
   /** Integer cents, never dollars — matches Stripe and avoids float math. */
   priceCents: number;

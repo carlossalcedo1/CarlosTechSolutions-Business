@@ -115,6 +115,12 @@ export function ProductDetailPage() {
             )}
           </div>
 
+          <div className="mt-4">
+            <p className="text-sm font-medium text-ink">Details</p>
+            <p className="mt-1 text-sm text-muted">Model: {item.model}</p>
+            <p className="text-sm text-muted">Storage: {item.storage}</p>
+          </div>
+
           <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted">
             {item.specs.map((spec) => (
               <li key={spec}>{spec}</li>

@@ -13,12 +13,10 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import glob as globlib
-import os
 import re
+import subprocess
 import sys
 from pathlib import Path
-from urllib.parse import unquote, urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -27,7 +25,22 @@ from pydantic import ValidationError
 from app.catalog import CATALOG_PATH, load_catalog, save_catalog
 from app.models import Category, Condition, Item
 
-PUBLIC_ITEMS_DIR = Path(__file__).resolve().parents[2] / "frontend" / "public" / "items"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+PUBLIC_ITEMS_DIR = REPO_ROOT / "frontend" / "public" / "items"
+DEPLOY_SCRIPT = REPO_ROOT / "deploy" / "deploy.sh"
+
+# All device photos live under one folder on the computer used to add
+# inventory (see docs/ADDING_INVENTORY.md) — each item's photos in their own
+# subfolder, e.g. ~/Documents/Catalog Photos/iphone-13-128gb/.
+PHOTOS_BASE_DIR = Path.home() / "Documents" / "Catalog Photos"
+
+# Every item ships the same boilerplate paragraph. Specific caveats belong in
+# the spec bullets ("unless explicitly stated above" is what points a reader
+# back up at them), not in a per-item free-text field.
+STANDARD_DESCRIPTION = (
+    "All functions have been tested and function without issue unless "
+    "explicitly stated above. View our return policy before purchase."
+)
 
 # Phone photos are 3-5MB each. Git never forgets a large file, so they get
 # resized on the way in — a repo you can't shrink later is the expensive
@@ -104,48 +117,23 @@ def ask_specs() -> list[str]:
         specs.append(line)
 
 
-def resolve_photo_paths(raw: str) -> list[Path]:
-    """Turn whatever the terminal handed us into real file paths.
-
-    Three things actually happen in practice, and this handles all of them:
-    dragging files in (macOS pastes backslash-escaped paths; most Linux
-    terminals paste `file:///home/you/photo%201.heic` URIs instead), typing a
-    glob like ~/Pictures/iphone/*.heic, or typing a folder.
-    """
-    tokens = [t for t in re.split(r"(?<!\\)\s+", raw.strip()) if t]
-    paths: list[Path] = []
-
-    for token in tokens:
-        token = token.strip("'\"").replace("\\ ", " ")
-
-        # GNOME Terminal and friends paste URIs, percent-encoded.
-        if token.startswith("file://"):
-            token = unquote(urlparse(token).path)
-
-        token = os.path.expanduser(token)
-
-        # A glob that matches nothing falls through as a literal so the loop
-        # below can report it as missing rather than silently skipping it.
-        matches = sorted(globlib.glob(token)) or [token]
-        for match in matches:
-            path = Path(match)
-            if path.is_dir():
-                paths.extend(
-                    sorted(c for c in path.iterdir() if c.suffix.lower() in IMAGE_SUFFIXES)
-                )
-            else:
-                paths.append(path)
-
-    return paths
-
-
 def copy_photos(item_id: str) -> list[str]:
-    """Copy photos into public/items/<id>/ and return their web paths."""
-    print("\nPhotos — drag them in, or type a folder or glob (blank to skip):")
-    print("  e.g. ~/Pictures/iphone14/*.heic   or   ~/Pictures/iphone14")
-    raw = input("  paths: ").strip()
-    if not raw:
+    """Copy photos from PHOTOS_BASE_DIR/<subfolder> into public/items/<id>/ and
+    return their web paths."""
+    print(f"\nPhotos — subfolder inside {PHOTOS_BASE_DIR} (blank to skip):")
+    subfolder = input("  subfolder: ").strip().strip("'\"")
+    if not subfolder:
         print("  (no photos; the site shows a placeholder until you add some)")
+        return []
+
+    src_dir = PHOTOS_BASE_DIR / subfolder
+    if not src_dir.is_dir():
+        print(f"  ! not a folder: {src_dir}")
+        return []
+
+    sources = sorted(p for p in src_dir.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES)
+    if not sources:
+        print(f"  ! no photos found in {src_dir}")
         return []
 
     try:
@@ -159,11 +147,6 @@ def copy_photos(item_id: str) -> list[str]:
         from PIL import Image, ImageOps
     except ImportError:
         print("  ! Pillow missing — run: pip3 install -r backend/requirements.txt")
-        return []
-
-    sources = resolve_photo_paths(raw)
-    if not sources:
-        print("  ! nothing matched that")
         return []
 
     dest_dir = PUBLIC_ITEMS_DIR / item_id
@@ -208,27 +191,51 @@ def copy_photos(item_id: str) -> list[str]:
     return web_paths
 
 
+def run_deploy() -> int:
+    """Hand off to deploy/deploy.sh so the new item goes live.
+
+    A frontend-only refresh isn't enough: the API bakes items.json into its
+    own image at build time (see payments.py) and prices checkout from its
+    in-memory copy, so a device added here can't actually be bought until
+    the API is rebuilt and restarted too. That's the whole deploy, not a
+    lighter "reload" — so this just runs the real script rather than
+    re-implementing a partial version of it.
+    """
+    print(f"\n{'=' * 60}\nDeploying\n{'=' * 60}")
+    return subprocess.run([str(DEPLOY_SCRIPT)], cwd=REPO_ROOT).returncode
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Add a device to the catalog.")
-    parser.parse_args()
+    parser.add_argument(
+        "--no-deploy",
+        action="store_true",
+        help="Save the item but skip running deploy/deploy.sh afterward.",
+    )
+    args = parser.parse_args()
 
     items = load_catalog()
     existing_ids = {item.id for item in items}
     print(f"Catalog: {len(items)} items ({CATALOG_PATH})\n")
 
-    name = ask("Device name (e.g. iPhone 13 128GB)")
+    category = ask_choice("Category:", [c.value for c in Category])
+    brand = ask("Brand", default="Apple")
+    model = ask("Model (e.g. iPhone 13)")
+    storage = ask("Storage (e.g. 128GB)")
+    condition = ask_choice("Condition:", [c.value for c in Condition])
+
+    # The title is never typed by hand — it's always Brand - Model - Storage,
+    # so cards and search stay consistent across every item. Condition is
+    # shown separately (already surfaced at the bottom of the product page).
+    name = f"{brand} - {model} - {storage}"
     item_id = slugify(name)
     while item_id in existing_ids:
         print(f"  ! id '{item_id}' already exists")
         item_id = slugify(ask("Unique id (e.g. iphone-13-128-b)"))
 
-    category = ask_choice("Category:", [c.value for c in Category])
-    brand = ask("Brand", default="Apple")
-    condition = ask_choice("Condition:", [c.value for c in Condition])
     price_cents = ask_price_cents()
     spec_line = ask("Short spec line for cards (e.g. 128GB . Unlocked)")
     specs = ask_specs()
-    description = ask("\nDescription (one paragraph)")
     featured = ask_bool("Feature on the homepage?", default=False)
     images = copy_photos(item_id)
 
@@ -238,11 +245,13 @@ def main() -> int:
             name=name,
             category=Category(category),
             brand=brand,
+            model=model,
+            storage=storage,
             condition=Condition(condition),
             priceCents=price_cents,
             specLine=spec_line,
             specs=specs,
-            description=description,
+            description=STANDARD_DESCRIPTION,
             images=images,
             featured=featured,
             dateAdded=dt.date.today().isoformat(),
@@ -256,8 +265,12 @@ def main() -> int:
 
     print(f"\nAdded {item.name} — {item.price_display} ({item.condition.value})")
     print(f"Catalog now has {len(items)} items.")
-    print("\nNext: run your deploy script to push it live.")
-    return 0
+
+    if args.no_deploy:
+        print("\nSkipped deploy (--no-deploy). Run ./deploy/deploy.sh when ready.")
+        return 0
+
+    return run_deploy()
 
 
 if __name__ == "__main__":

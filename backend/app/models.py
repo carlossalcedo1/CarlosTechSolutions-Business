@@ -38,6 +38,8 @@ class Item(BaseModel):
     name: str = Field(min_length=1)
     category: Category
     brand: str = Field(min_length=1)
+    model: str = Field(min_length=1)
+    storage: str = Field(min_length=1)
     condition: Condition
 
     # Money is stored as integer cents, never dollars-as-float. Floats lose
