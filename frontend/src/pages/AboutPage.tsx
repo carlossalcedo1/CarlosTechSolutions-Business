@@ -18,7 +18,10 @@ export function AboutPage() {
           <div>
             <h1 className="text-2xl font-semibold text-ink">Meet Carlos</h1>
             <p className="mt-1 text-muted">
-              Who you are, your background, why buyers can trust you.
+              Hey, I&apos;m Carlos - the one behind CarlosTechSolutions. I&apos;m a Computer
+              Science student at the University of Florida with a genuine passion for technology
+              and looking out for others. From full housing swaps to simple repairs, I match every
+              job to your budget - backed by full transparency.
             </p>
             <p className="mt-1 text-muted">Based in Gainesville, FL - ships nationwide.</p>
           </div>
