@@ -46,13 +46,10 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
 	exit 1
 fi
 
-step "Pulling latest"
-git pull --ff-only
-
 step "Checking the catalog"
 # Inventory is gitignored — each computer keeps its own copy (see
-# docs/ADDING_INVENTORY.md) — so it never arrives with the pull above. Stop
-# here rather than let the build or API image quietly ship without it.
+# docs/ADDING_INVENTORY.md), so it's never in the repo. Stop here rather
+# than let the build or API image quietly ship without it.
 CATALOG="frontend/src/data/items.json"
 if [ ! -f "$CATALOG" ]; then
 	echo "$CATALOG is missing. Inventory isn't in git: copy it, and" >&2

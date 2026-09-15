@@ -224,10 +224,10 @@ def main() -> int:
     storage = ask("Storage (e.g. 128GB)")
     condition = ask_choice("Condition:", [c.value for c in Condition])
 
-    # The title is never typed by hand — it's always Brand - Model - Storage,
+    # The title is never typed by hand — it's always Brand Model Storage,
     # so cards and search stay consistent across every item. Condition is
     # shown separately (already surfaced at the bottom of the product page).
-    name = f"{brand} - {model} - {storage}"
+    name = f"{brand} {model} {storage}"
     item_id = slugify(name)
     while item_id in existing_ids:
         print(f"  ! id '{item_id}' already exists")
