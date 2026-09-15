@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <linearGradient id="boltGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8CFFB0"/>
+      <stop offset="1" stop-color="#12933f"/>
+    </linearGradient>
+    <clipPath id="boltClip">
+      <path transform="translate(2,2)" d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z"/>
+    </clipPath>
+    <filter id="softBlur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="1.6"/>
+    </filter>
+  </defs>
+  <rect width="24" height="24" rx="5" fill="#0a0a0a"/>
+  <path transform="translate(2,2)" d="M11.983 1.907a.75.75 0 00-1.292-.657l-8.5 9.5A.75.75 0 002.75 12h6.572l-1.305 6.093a.75.75 0 001.292.657l8.5-9.5A.75.75 0 0017.25 8h-6.572l1.305-6.093z" fill="url(#boltGrad)"/>
+  <g clip-path="url(#boltClip)">
+    <ellipse cx="8" cy="5.5" rx="5" ry="3" fill="#ffffff" opacity="0.4" filter="url(#softBlur)"/>
+  </g>
+</svg>

@@ -54,7 +54,13 @@ export function PhotoCarousel() {
               alt={s.caption}
               loading={i === 0 ? "eager" : "lazy"}
               draggable={false}
-              className="h-56 w-full shrink-0 snap-center object-cover sm:h-96"
+              // A fixed desktop height paired with the hero's fluid
+              // max-w-4xl width meant the crop ratio changed with viewport
+              // width — a tablet in landscape and a wide monitor showed a
+              // different amount of each photo. aspect-ratio + h-auto keeps
+              // the crop identical at every desktop width; the fixed mobile
+              // height below the sm breakpoint is untouched.
+              className="h-56 w-full shrink-0 snap-center object-cover sm:h-auto sm:aspect-[9/4]"
             />
           ))}
         </div>

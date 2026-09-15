@@ -54,7 +54,9 @@ export function Header() {
               this is the one asset that existed to copy). Swap
               /public/logo.svg for CarlosTechSolutions' own mark whenever
               it's ready (see LAUNCH_CHECKLIST.md Phase 7: "Logo mark for
-              the reserved slot"). */}
+              the reserved slot"). A few draft directions were tried and
+              parked — see /public/logo-draft*.svg — pending a mark to
+              draw up separately. */}
           <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
           <span className="text-lg font-bold tracking-tight text-ink">CarlosTechSolutions</span>
         </Link>

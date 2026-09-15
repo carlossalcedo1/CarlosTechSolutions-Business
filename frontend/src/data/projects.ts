@@ -1,3 +1,5 @@
+import { PROMPTWORKS_URL } from "../lib/constants";
+
 // Carlos's other projects, shown on both the homepage and the About page.
 // Single source of truth so the copy can't drift between the two.
 export interface Project {
@@ -25,8 +27,7 @@ export const projects: Project[] = [
     headline: "You use AI every day. Nobody taught you how to ask.",
     body: "PromptWorks turns prompt engineering into reps — real scenarios, scored feedback, and a number that shows the skill actually moving.",
     linkLabel: "Navigate",
-    // url: "https://…"  ← add the real URL here and this link opens the site
-    // in a new tab instead of falling back to the About page.
+    url: PROMPTWORKS_URL,
   },
   {
     name: "RhinoTrade",

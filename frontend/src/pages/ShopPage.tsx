@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { items } from "../data/items";
-import { CATEGORIES } from "../lib/constants";
+import { CATEGORIES, EBAY_PROFILE_URL, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
 import { useSoldItemIds } from "../lib/useSoldItemIds";
 import type { Category, Condition } from "../types";
@@ -140,6 +140,28 @@ export function ShopPage() {
       ) : (
         <p className="mt-8 text-muted">No items match those filters yet — try clearing one.</p>
       )}
+
+      <p className="mt-10 border-t border-hairline pt-6 text-sm text-muted">
+        For the most up-to-date listings, also check out our{" "}
+        <a
+          href={FACEBOOK_MARKETPLACE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-brand hover:underline"
+        >
+          Facebook
+        </a>{" "}
+        and{" "}
+        <a
+          href={EBAY_PROFILE_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-brand hover:underline"
+        >
+          eBay
+        </a>{" "}
+        pages.
+      </p>
     </div>
   );
 }

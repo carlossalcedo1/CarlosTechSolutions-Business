@@ -166,7 +166,9 @@ def contact(body: ContactRequest, request: Request, settings: Settings = Depends
     if body.website:
         return OkResponse()  # honeypot tripped — pretend success, send nothing
 
-    lines = [f"Name: {html.escape(body.name)}", f"Email: {html.escape(body.email)}"]
+    lines = [f"Name: {html.escape(body.name)}"]
+    if body.email:
+        lines.append(f"Email: {html.escape(body.email)}")
     if body.phone:
         lines.append(f"Phone: {html.escape(body.phone)}")
     if body.repair_type:

@@ -28,6 +28,11 @@ export function ContactPage() {
 
   const [form, setForm] = useState({
     name: "",
+    // Only one of these is ever shown/required at a time — see
+    // contactMethod below — but both are kept in state (rather than one
+    // shared value) so switching the checkbox doesn't discard what was
+    // already typed into the other one.
+    contactMethod: "email" as "email" | "phone",
     email: "",
     phone: "",
     repairType: REPAIR_TYPES[0],
@@ -50,12 +55,18 @@ export function ContactPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    // Nothing to check here — whichever of email/phone is currently shown
+    // carries `required`, so the browser already refused to fire onSubmit
+    // if it's empty.
     setError(null);
     setSubmitting(true);
     try {
       await submitContact({
         name: form.name,
-        email: form.email,
+        // Empty string, not undefined, is what an untouched controlled
+        // input holds — sending it as-is would fail the backend's email
+        // format check even though the field is optional there.
+        email: form.email.trim() || undefined,
         phone: form.phone,
         message: form.message,
         // Only sent when actually relevant, so a general question's email
@@ -99,10 +110,14 @@ export function ContactPage() {
       <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
         <div>
           <h1 className="text-xl font-semibold text-ink">{heading}</h1>
+          <p className="mt-2 text-sm text-muted">
+            Give us your email or phone number to reach back to you.
+          </p>
 
           {sent ? (
             <p className="mt-4 rounded border border-hairline bg-surface p-4 text-sm text-ink">
-              Thanks, {form.name || "there"} — we&apos;ll get back to you at {form.email} soon.
+              Thanks, {form.name || "there"} — we&apos;ll get back to you at{" "}
+              {form.contactMethod === "email" ? form.email : form.phone} soon.
             </p>
           ) : (
             <form onSubmit={handleSubmit} className="mt-4 space-y-3">
@@ -117,25 +132,38 @@ export function ContactPage() {
               </div>
 
               <div>
-                <label className="text-sm text-muted">Email</label>
-                <input
-                  required
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => set("email", e.target.value)}
-                  className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
-                />
+                <label className="text-sm text-muted">How should we reach you?</label>
+                <div className="mt-1.5 flex gap-5">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                    <input
+                      type="checkbox"
+                      checked={form.contactMethod === "email"}
+                      onChange={() => set("contactMethod", "email")}
+                      className="h-4 w-4 rounded border-hairline accent-brand"
+                    />
+                    Email
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+                    <input
+                      type="checkbox"
+                      checked={form.contactMethod === "phone"}
+                      onChange={() => set("contactMethod", "phone")}
+                      className="h-4 w-4 rounded border-hairline accent-brand"
+                    />
+                    Phone
+                  </label>
+                </div>
               </div>
 
               <div>
                 <label className="text-sm text-muted">
-                  Phone <span className="text-muted/70">(optional)</span>
+                  {form.contactMethod === "email" ? "Email" : "Phone"}
                 </label>
                 <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                  placeholder="Best number to reach you"
+                  required
+                  type={form.contactMethod === "email" ? "email" : "tel"}
+                  value={form.contactMethod === "email" ? form.email : form.phone}
+                  onChange={(e) => set(form.contactMethod, e.target.value)}
                   className="mt-1 w-full rounded border border-hairline px-3 py-2 text-sm"
                 />
               </div>

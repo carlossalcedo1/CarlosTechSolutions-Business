@@ -25,7 +25,7 @@ export function ConditionBadge({
   /** Makes the badge a link to its grade's explanation on /conditions. */
   linkToGuide?: boolean;
 }) {
-  const className = `inline-block rounded px-2 py-1 text-xs font-medium ${styles[condition]}`;
+  const className = `inline-block whitespace-nowrap rounded px-2 py-1 text-xs font-medium ${styles[condition]}`;
 
   if (linkToGuide) {
     return (

@@ -7,7 +7,7 @@ five routes in LAUNCH_CHECKLIST.md's Phase 1 table.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, model_validator
 
 
 class CheckoutRequest(BaseModel):
@@ -31,12 +31,20 @@ class _Honeypot(BaseModel):
 
 class ContactRequest(_Honeypot):
     name: str = Field(min_length=1, max_length=200)
-    email: EmailStr
+    # Either works to reach back — see ContactPage.tsx's subheader — so
+    # neither is required on its own; the validator below requires one.
+    email: EmailStr | None = None
     phone: str = ""
     message: str = Field(min_length=1, max_length=5000)
     repair_type: str = ""
     device_brand: str = ""
     imei: str = ""
+
+    @model_validator(mode="after")
+    def _require_a_way_to_reach_back(self) -> "ContactRequest":
+        if not self.email and not self.phone:
+            raise ValueError("Provide an email or phone number so we can reach back to you.")
+        return self
 
 
 class TradeInRequest(_Honeypot):

@@ -21,3 +21,8 @@ export const CONTACT_PHONE = "(305) 763-2541";
 export const FACEBOOK_MARKETPLACE_URL =
   "https://www.facebook.com/marketplace/profile/100038115972128/";
 export const EBAY_PROFILE_URL = "https://www.ebay.com/usr/jcsal1963";
+
+// The actual PromptWorks site, on its own subdomain. Also used by /promptworks
+// (see pages/PromptworksPage.tsx) — a bare link handed out without the
+// subdomain still lands somewhere real instead of a 404.
+export const PROMPTWORKS_URL = "https://promptworks.carlostechsolutions.com";
