@@ -10,6 +10,7 @@ import { CheckoutSuccessPage } from "./pages/CheckoutSuccessPage";
 import { CheckoutCancelledPage } from "./pages/CheckoutCancelledPage";
 import { ServicesPage } from "./pages/ServicesPage";
 import { ReturnPolicyPage } from "./pages/ReturnPolicyPage";
+import { ConditionsPage } from "./pages/ConditionsPage";
 import { TermsPage } from "./pages/TermsPage";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { HelpCenterPage } from "./pages/HelpCenterPage";
@@ -33,6 +34,7 @@ export function App() {
           <Route path="checkout/cancelled" element={<CheckoutCancelledPage />} />
           <Route path="help" element={<HelpCenterPage />} />
           <Route path="returns" element={<ReturnPolicyPage />} />
+          <Route path="conditions" element={<ConditionsPage />} />
           <Route path="terms" element={<TermsPage />} />
           <Route path="privacy" element={<PrivacyPolicyPage />} />
           <Route path="*" element={<NotFoundPage />} />

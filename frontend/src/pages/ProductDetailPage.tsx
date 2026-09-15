@@ -107,7 +107,7 @@ export function ProductDetailPage() {
           <h1 className="text-2xl font-semibold text-ink">{item.name}</h1>
           <p className="mt-1 text-2xl font-semibold text-ink">{formatPrice(item.priceCents)}</p>
           <div className="mt-2 flex items-center gap-2">
-            <ConditionBadge condition={item.condition} />
+            <ConditionBadge condition={item.condition} linkToGuide />
             {isSold && (
               <span className="rounded-full bg-ink px-2.5 py-1 text-xs font-semibold text-white">
                 Sold
@@ -228,6 +228,10 @@ export function ProductDetailPage() {
             Ships same day · Same or next-day local pickup ·{" "}
             <Link to="/returns" className="text-brand hover:underline">
               Return policy
+            </Link>{" "}
+            ·{" "}
+            <Link to="/conditions" className="text-brand hover:underline">
+              Condition guide
             </Link>
           </p>
         </div>
