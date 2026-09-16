@@ -38,7 +38,7 @@ export function CheckoutSuccessPage() {
         inbox.
       </p>
       {sessionId && (
-        <p className="mt-4 text-xs text-muted">
+        <p className="mt-4 break-all text-xs text-muted">
           Order reference: <span className="font-mono">{sessionId}</span>
         </p>
       )}

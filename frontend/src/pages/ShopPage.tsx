@@ -142,7 +142,7 @@ export function ShopPage() {
       )}
 
       <p className="mt-10 border-t border-hairline pt-6 text-sm text-muted">
-        For the most up-to-date listings, also check out our{" "}
+        *For the most up-to-date listings, also check out our{" "}
         <a
           href={FACEBOOK_MARKETPLACE_URL}
           target="_blank"
