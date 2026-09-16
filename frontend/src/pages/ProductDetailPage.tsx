@@ -119,6 +119,10 @@ export function ProductDetailPage() {
             <p className="text-sm font-medium text-ink">Details</p>
             <p className="mt-1 text-sm text-muted">Model: {item.model}</p>
             <p className="text-sm text-muted">Storage: {item.storage}</p>
+            {/* Same number as the Notion inventory record — lets a return or
+                warranty conversation reference the exact same item on both
+                sides. */}
+            <p className="text-sm text-muted">ID: {item.inventoryId}</p>
           </div>
 
           <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted">

@@ -17,6 +17,9 @@ export type Condition = "New" | "A+ - Excellent" | "B - Good" | "C - Fair";
 
 export interface Item {
   id: string;
+  /** Cross-references the item in the Notion inventory database — shown to
+   *  the customer too, not just internal. */
+  inventoryId: string;
   name: string;
   category: Category;
   brand: string;

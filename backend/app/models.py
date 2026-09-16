@@ -35,6 +35,11 @@ class Item(BaseModel):
     model_config = {"extra": "forbid"}
 
     id: str = Field(min_length=1, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    # Separate from `id` (the URL slug) — this is the number that cross-
+    # references the item in the Notion inventory database, shown to the
+    # customer too so a return/warranty conversation can reference the same
+    # number both sides are looking at.
+    inventoryId: str = Field(min_length=1)
     name: str = Field(min_length=1)
     category: Category
     brand: str = Field(min_length=1)

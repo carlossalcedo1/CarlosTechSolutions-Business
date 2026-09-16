@@ -233,6 +233,7 @@ def main() -> int:
         print(f"  ! id '{item_id}' already exists")
         item_id = slugify(ask("Unique id (e.g. iphone-13-128-b)"))
 
+    inventory_id = ask("Inventory ID (cross-references your Notion database)")
     price_cents = ask_price_cents()
     spec_line = ask("Short spec line for cards (e.g. 128GB . Unlocked)")
     specs = ask_specs()
@@ -242,6 +243,7 @@ def main() -> int:
     try:
         item = Item(
             id=item_id,
+            inventoryId=inventory_id,
             name=name,
             category=Category(category),
             brand=brand,
