@@ -110,7 +110,25 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
     try:
         event = verify_webhook(payload=payload, sig_header=sig_header, settings=settings)
     except Exception:
-        logger.exception("Stripe webhook signature verification failed")
+        # TEMPORARY — diagnosing a signature mismatch on a brand-new webhook
+        # secret. sig_header (timestamp + signature) is safe to log; it's
+        # not the secret itself. Remove once resolved.
+        import hashlib
+        import hmac
+
+        parts = dict(p.split("=", 1) for p in sig_header.split(",") if "=" in p)
+        ts = parts.get("t", "")
+        expected = hmac.new(
+            settings.stripe_webhook_secret.encode(), f"{ts}.".encode() + payload, hashlib.sha256
+        ).hexdigest()
+        logger.error(
+            "Stripe webhook signature mismatch. header=%r payload_len=%d "
+            "expected_v1=%s secret_prefix=%s",
+            sig_header,
+            len(payload),
+            expected,
+            settings.stripe_webhook_secret[:12],
+        )
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     store = request.app.state.sold_store
