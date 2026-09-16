@@ -140,7 +140,6 @@ def sale_alert(item: Item, session: dict) -> tuple[str, str]:
     ] or ["(no shipping address on the session)"]
 
     payment_intent = session.get("payment_intent")
-    dashboard = "https://dashboard.stripe.com/" + ("" if session.get("livemode") else "test/")
 
     lines = [
         f"{item.name} just sold for {paid} {currency}. It's already marked sold on the site.",
@@ -165,6 +164,9 @@ def sale_alert(item: Item, session: dict) -> tuple[str, str]:
         f"  Payment status:    {session.get('payment_status')}",
     ]
     if payment_intent:
-        lines.append(f"  Payment:           {dashboard}payments/{payment_intent}")
+        # Plain ID, not a dashboard.stripe.com link — a fresh domain sending
+        # an email with an unfamiliar financial-platform link plus dollar
+        # amounts is exactly the shape a phishing filter is trained on.
+        lines.append(f"  Payment intent ID: {payment_intent}")
 
     return f"Sold: {item.name} for {paid}", "\n".join(lines)
