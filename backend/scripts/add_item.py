@@ -31,8 +31,8 @@ DEPLOY_SCRIPT = REPO_ROOT / "deploy" / "deploy.sh"
 
 # All device photos live under one folder on the computer used to add
 # inventory (see docs/ADDING_INVENTORY.md) — each item's photos in their own
-# subfolder, e.g. ~/Documents/Catalog Photos/iphone-13-128gb/.
-PHOTOS_BASE_DIR = Path.home() / "Documents" / "Catalog Photos"
+# subfolder, e.g. ~/catalog/iphone-13-128gb/.
+PHOTOS_BASE_DIR = Path.home() / "catalog"
 
 # Every item ships the same boilerplate paragraph. Specific caveats belong in
 # the spec bullets ("unless explicitly stated above" is what points a reader
