@@ -29,8 +29,10 @@ class Condition(str, Enum):
 
 
 class Item(BaseModel):
-    """One physical device. Quantity is always 1 — see `sold` handling in the
-    API: a device that sells is gone, not decremented."""
+    """One catalog listing, possibly covering several physical units. Most
+    devices carry quantity 1, but bulk-stocked items (e.g. the iPod Touch
+    lot) can be higher — see `sold_store.py`: a sale decrements the
+    remaining count, and the listing only disappears once it hits zero."""
 
     model_config = {"extra": "forbid"}
 
@@ -51,6 +53,10 @@ class Item(BaseModel):
     # precision ($0.1 + 0.2 != 0.3), and Stripe's API takes cents anyway, so
     # this removes a whole class of "charged the wrong amount" bug.
     priceCents: int = Field(gt=0)
+
+    # Units in stock. Defaults to 1 (a single physical device) so existing
+    # catalog entries and the common case need no change.
+    quantity: int = Field(default=1, ge=1)
 
     specLine: str = Field(min_length=1)
     specs: list[str]

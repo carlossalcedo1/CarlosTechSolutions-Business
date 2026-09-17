@@ -1,11 +1,10 @@
 """Sold-state store.
 
-A device that sells is gone, not decremented (see the `Item` model
-docstring), so this store only ever tracks two things:
-
-- which item ids are sold
-- which Stripe event ids have already been processed, so a retried webhook
-  delivery (Stripe does retry) can't fire the "sold" emails twice
+Tracks, per item id, how many units have sold — not a boolean, since an
+`Item` can carry a `quantity` above 1 and should stay listed, at a lower
+remaining count, until every unit is gone. Also tracks which Stripe event
+ids have already been processed, so a retried webhook delivery (Stripe does
+retry) can't record the same sale twice.
 
 Deliberately just JSON on disk, per LAUNCH_CHECKLIST.md Phase 1 — this is a
 single-container deploy with one writer. If this ever needs concurrent
@@ -26,7 +25,21 @@ class SoldStore:
         self._lock = threading.Lock()
         self._path.parent.mkdir(parents=True, exist_ok=True)
         if not self._path.exists():
-            self._write({"sold_item_ids": [], "processed_event_ids": []})
+            self._write({"sold_counts": {}, "processed_event_ids": []})
+        else:
+            self._migrate_if_needed()
+
+    def _migrate_if_needed(self) -> None:
+        # Older stores recorded sold-ness as a flat list of ids, back when
+        # every item's quantity was implicitly 1 and a checkout always buys
+        # exactly 1 unit (see payments.py) — so each id in that list is
+        # exactly one sold unit under the new counted scheme.
+        with self._lock:
+            data = self._read()
+            if "sold_counts" not in data:
+                old_ids = data.pop("sold_item_ids", [])
+                data["sold_counts"] = {item_id: 1 for item_id in old_ids}
+                self._write(data)
 
     def _read(self) -> dict:
         return json.loads(self._path.read_text())
@@ -38,20 +51,15 @@ class SoldStore:
         tmp.write_text(json.dumps(data, indent=2) + "\n")
         tmp.replace(self._path)
 
-    def is_sold(self, item_id: str) -> bool:
+    def units_sold(self, item_id: str) -> int:
         with self._lock:
-            return item_id in self._read()["sold_item_ids"]
+            return self._read()["sold_counts"].get(item_id, 0)
 
-    def sold_ids(self) -> list[str]:
-        with self._lock:
-            return list(self._read()["sold_item_ids"])
-
-    def mark_sold(self, item_id: str) -> None:
+    def record_sale(self, item_id: str) -> None:
         with self._lock:
             data = self._read()
-            if item_id not in data["sold_item_ids"]:
-                data["sold_item_ids"].append(item_id)
-                self._write(data)
+            data["sold_counts"][item_id] = data["sold_counts"].get(item_id, 0) + 1
+            self._write(data)
 
     def already_processed(self, event_id: str) -> bool:
         with self._lock:

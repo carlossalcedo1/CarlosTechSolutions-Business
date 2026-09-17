@@ -108,6 +108,23 @@ def ask_price_cents() -> int:
         return cents
 
 
+def ask_quantity() -> int:
+    """Most devices are a single physical unit; a bulk-stocked item (e.g. a
+    lot of the same accessory) can carry a higher count and stays listed,
+    at a lower remaining count, until every unit sells."""
+    while True:
+        raw = ask("Quantity in stock", default="1")
+        try:
+            quantity = int(raw)
+        except ValueError:
+            print("  ! whole numbers only")
+            continue
+        if quantity < 1:
+            print("  ! must be at least 1")
+            continue
+        return quantity
+
+
 def ask_specs() -> list[str]:
     print("\nSpec bullets for the product page (blank line to finish):")
     specs: list[str] = []
@@ -262,6 +279,7 @@ def main() -> int:
 
     inventory_id = ask("Inventory ID (cross-references your Notion database)")
     price_cents = ask_price_cents()
+    quantity = ask_quantity()
     spec_line = ask("Short spec line for cards (e.g. 128GB . Unlocked)")
     specs = ask_specs()
     featured = ask_bool("Feature on the homepage?", default=False)
@@ -282,6 +300,7 @@ def main() -> int:
             storage=storage,
             condition=Condition(condition),
             priceCents=price_cents,
+            quantity=quantity,
             specLine=spec_line,
             specs=specs,
             description=STANDARD_DESCRIPTION,
@@ -296,7 +315,8 @@ def main() -> int:
     items.append(item)
     save_catalog(items)
 
-    print(f"\nAdded {item.name} — {item.price_display} ({item.condition.value})")
+    qty_note = f", qty {item.quantity}" if item.quantity != 1 else ""
+    print(f"\nAdded {item.name} — {item.price_display} ({item.condition.value}{qty_note})")
     print(f"Catalog now has {len(items)} items.")
 
     if args.no_deploy:

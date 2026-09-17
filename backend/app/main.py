@@ -82,7 +82,14 @@ def sold_items(request: Request):
     # sale happened since the last deploy without asking. This is the only
     # thing it asks for — which ids are sold, nothing else — so a listing
     # marked "Sold" instead of silently vanishing until the next rebuild.
-    return SoldItemsResponse(sold_item_ids=request.app.state.sold_store.sold_ids())
+    # An item with quantity > 1 only counts as sold once every unit is gone.
+    store = request.app.state.sold_store
+    sold_out_ids = [
+        item.id
+        for item in request.app.state.catalog.values()
+        if store.units_sold(item.id) >= item.quantity
+    ]
+    return SoldItemsResponse(sold_item_ids=sold_out_ids)
 
 
 @app.post("/api/checkout", response_model=CheckoutResponse)
@@ -90,7 +97,8 @@ def checkout(body: CheckoutRequest, request: Request, settings: Settings = Depen
     item = request.app.state.catalog.get(body.item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
-    if request.app.state.sold_store.is_sold(item.id):
+    store = request.app.state.sold_store
+    if store.units_sold(item.id) >= item.quantity:
         raise HTTPException(status_code=409, detail="This item has already sold")
     if not settings.stripe_secret_key:
         raise HTTPException(status_code=500, detail="Stripe is not configured yet")
@@ -131,7 +139,7 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
         if item is None:
             logger.warning("checkout.session.completed with unknown item_id=%r", item_id)
         else:
-            store.mark_sold(item.id)
+            store.record_sale(item.id)
 
             buyer_email = (session.get("customer_details") or {}).get("email")
             if buyer_email:
