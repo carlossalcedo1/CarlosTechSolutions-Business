@@ -54,6 +54,10 @@ JPEG_QUALITY = 82
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".tif", ".tiff", ".bmp", ".gif"}
 
 
+class PhotoCopyError(Exception):
+    """Every photo in the chosen folder failed to process."""
+
+
 def slugify(text: str) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
     return re.sub(r"-{2,}", "-", slug)
@@ -140,14 +144,28 @@ def copy_photos(item_id: str) -> list[str]:
         import pillow_heif
 
         pillow_heif.register_heif_opener()  # teaches Pillow to read iPhone HEICs
+        heif_available = True
     except ImportError:
-        pass
+        heif_available = False
 
     try:
         from PIL import Image, ImageOps
     except ImportError:
         print("  ! Pillow missing — run: pip3 install -r backend/requirements.txt")
         return []
+
+    # A missing pillow-heif doesn't stop the script — Image.open() just raises
+    # per file below and gets skipped — so on an all-HEIC folder every photo
+    # can silently fail and the item still saves with no images. Warn up
+    # front so that failure has an obvious cause instead of looking random.
+    heic_sources = [p for p in sources if p.suffix.lower() in (".heic", ".heif")]
+    if heic_sources and not heif_available:
+        print(
+            f"  ! {len(heic_sources)} HEIC photo(s) found but pillow-heif isn't "
+            f"installed for {sys.executable}\n"
+            "    Fix: pip3 install -r backend/requirements.txt "
+            "(or activate the project's .venv) and re-run."
+        )
 
     dest_dir = PUBLIC_ITEMS_DIR / item_id
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -187,6 +205,15 @@ def copy_photos(item_id: str) -> list[str]:
         kb = dest.stat().st_size / 1024
         print(f"  + {dest.name}  <- {src.name}  ({img.width}x{img.height}, {kb:.0f} KB)")
         web_paths.append(f"/items/{item_id}/{dest.name}")
+
+    if sources and not web_paths:
+        # Every candidate photo failed to open/convert. Returning [] here
+        # would let the item save silently with no images — indistinguishable
+        # from "no photos were provided" — so this is a hard stop instead.
+        raise PhotoCopyError(
+            f"found {len(sources)} photo(s) in {src_dir} but every one failed "
+            "to process (see errors above) — nothing was saved"
+        )
 
     return web_paths
 
@@ -238,7 +265,11 @@ def main() -> int:
     spec_line = ask("Short spec line for cards (e.g. 128GB . Unlocked)")
     specs = ask_specs()
     featured = ask_bool("Feature on the homepage?", default=False)
-    images = copy_photos(item_id)
+    try:
+        images = copy_photos(item_id)
+    except PhotoCopyError as exc:
+        print(f"\nNot saved — {exc}", file=sys.stderr)
+        return 1
 
     try:
         item = Item(

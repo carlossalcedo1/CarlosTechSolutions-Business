@@ -38,6 +38,20 @@ def create_checkout_session(*, item: Item, settings: Settings) -> stripe.checkou
             }
         ],
         shipping_address_collection={"allowed_countries": ["US"]},
+        shipping_options=[
+            {"shipping_rate": "shr_1UGUBbGR61TDWfEVsaOxjWmh"},
+            # Stripe has no separate "local pickup" object — it's just a
+            # fixed_amount shipping rate at $0, defined inline so it needs no
+            # dashboard entry or ID.
+            {
+                "shipping_rate_data": {
+                    "type": "fixed_amount",
+                    "fixed_amount": {"amount": 0, "currency": "usd"},
+                    "display_name": "Local Pickup (Free)",
+                }
+            },
+        ],
+        allow_promotion_codes=True,
         # Read back in the webhook to know which item to mark sold — never
         # trust anything the client could have sent instead.
         metadata={"item_id": item.id},
