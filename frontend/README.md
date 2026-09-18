@@ -1,6 +1,6 @@
 # Carlos Tech Solutions — Frontend
 
-Stage 1 of the project (see `../carlos-tech-solutions-brief.md`): a React
+Stage 1 of the project (see `../docs/old/brief.md`): a React
 frontend running entirely on mock data, deployable for free on Vercel.
 No backend calls happen yet — Stage 2 adds a FastAPI + MongoDB backend
 in a sibling `backend/` folder.
