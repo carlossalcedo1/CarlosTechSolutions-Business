@@ -11,7 +11,6 @@ so a mistyped price or category fails here rather than on the live site.
 
 from __future__ import annotations
 
-import argparse
 import datetime as dt
 import re
 import subprocess
@@ -250,14 +249,6 @@ def run_deploy() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Add a device to the catalog.")
-    parser.add_argument(
-        "--no-deploy",
-        action="store_true",
-        help="Save the item but skip running deploy/deploy.sh afterward.",
-    )
-    args = parser.parse_args()
-
     items = load_catalog()
     existing_ids = {item.id for item in items}
     print(f"Catalog: {len(items)} items ({CATALOG_PATH})\n")
@@ -319,8 +310,8 @@ def main() -> int:
     print(f"\nAdded {item.name} — {item.price_display} ({item.condition.value}{qty_note})")
     print(f"Catalog now has {len(items)} items.")
 
-    if args.no_deploy:
-        print("\nSkipped deploy (--no-deploy). Run ./deploy/deploy.sh when ready.")
+    if not ask_bool("\nDeploy now?", default=True):
+        print("Skipped deploy. Run ./deploy/deploy.sh when ready.")
         return 0
 
     return run_deploy()
