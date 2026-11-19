@@ -1,5 +1,5 @@
 // The catalog. GENERATED DATA — do not hand-edit items.json; add inventory
-// with `python backend/scripts/add_item.py`, which validates every field
+// with `python scripts/add_item.py`, which validates every field
 // against the same Pydantic model the checkout endpoint uses.
 //
 // items.json is gitignored: inventory is local to each computer (see
@@ -12,7 +12,9 @@
 // the backend re-validates this file on boot, so a bad category fails loudly
 // at startup rather than silently at checkout.
 import type { Item } from "../types";
-import data from "./items.json";
+// It lives outside frontend/ (repo-root scripts/, next to the CLIs that
+// write it) — vite.config.ts allows that folder for the dev server.
+import data from "../../../scripts/items.json";
 
 export const items = data as unknown as Item[];
 

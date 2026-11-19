@@ -3,7 +3,7 @@
 # Build from the repo root: docker build -f backend/Dockerfile .
 # (The repo root, not backend/, because app.catalog.CATALOG_PATH resolves
 # two directories up from backend/app/catalog.py to find
-# frontend/src/data/items.json — this image mirrors that same layout so the
+# scripts/items.json — this image mirrors that same layout so the
 # loader code doesn't need a container-specific branch.)
 
 FROM python:3.12-slim
@@ -20,7 +20,7 @@ COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend/app backend/app
-COPY frontend/src/data/items.json frontend/src/data/items.json
+COPY scripts/items.json scripts/items.json
 
 # Sold-state store + subscriber list (see app/sold_store.py) — created here,
 # owned by the non-root user below, so it's writable before compose mounts

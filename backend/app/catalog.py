@@ -15,8 +15,8 @@ from pydantic import TypeAdapter
 
 from .models import Item
 
-# backend/app/catalog.py -> repo root -> frontend/src/data/items.json
-CATALOG_PATH = Path(__file__).resolve().parents[2] / "frontend" / "src" / "data" / "items.json"
+# backend/app/catalog.py -> repo root -> scripts/items.json
+CATALOG_PATH = Path(__file__).resolve().parents[2] / "scripts" / "items.json"
 
 _ADAPTER = TypeAdapter(list[Item])
 

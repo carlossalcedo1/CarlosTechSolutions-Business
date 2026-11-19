@@ -6,11 +6,11 @@
 // empty catalog instead. Never touches a file that already exists.
 import { existsSync, writeFileSync } from "node:fs";
 
-const catalog = new URL("../src/data/items.json", import.meta.url);
+const catalog = new URL("../../scripts/items.json", import.meta.url);
 
 if (!existsSync(catalog)) {
   writeFileSync(catalog, "[]\n");
   console.log(
-    "Created an empty src/data/items.json — inventory isn't in git; see docs/ADDING_INVENTORY.md.",
+    "Created an empty scripts/items.json — inventory isn't in git; see docs/ADDING_INVENTORY.md.",
   );
 }

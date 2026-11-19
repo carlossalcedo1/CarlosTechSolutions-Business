@@ -38,6 +38,10 @@ def create_checkout_session(*, item: Item, settings: Settings) -> stripe.checkou
             }
         ],
         shipping_address_collection={"allowed_countries": ["US"]},
+        # Off by default in Stripe Checkout — without this, buyers are never
+        # asked for a phone and the sale alert always reads "(not given)".
+        # Once enabled, Checkout requires it.
+        phone_number_collection={"enabled": True},
         shipping_options=[
             {"shipping_rate": "shr_1UGUBbGR61TDWfEVsaOxjWmh"},
             # Stripe has no separate "local pickup" object — it's just a

@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 import { EBAY_PROFILE_URL, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
 
-// The other places we sell, shown in the same 2x2 hairline grid as the
-// homepage's "Why buy from us" promises. A card only becomes a link once it
-// has a `url` — add your Mercari and Depop profile links below and those
-// cards start linking out, same as eBay's and Facebook's already do.
+// The other places we sell, shown as a 1x2 row in the same hairline style
+// as the homepage's "Why buy from us" promises (stacked on phones). A card
+// only becomes a link once it has a `url`.
 //
 // Icons are simple marks in each platform's brand color, not their official
 // logo files — swap in the real ones from each brand's press kit if you like.
@@ -34,30 +33,6 @@ const MARKETPLACES: Array<{ name: string; body: string; url?: string; icon: Reac
     icon: (
       <svg viewBox="0 0 24 24" className={ICON} fill="#1877f2" aria-hidden>
         <path d="M22 12a10 10 0 10-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.6V12h2.7l-.4 2.9h-2.3v7A10 10 0 0022 12z" />
-      </svg>
-    ),
-  },
-  {
-    name: "Mercari",
-    body: "Shipped nationwide, with Mercari's buyer protection.",
-    icon: (
-      <svg viewBox="0 0 48 48" className={ICON} aria-hidden>
-        <circle cx="24" cy="24" r="20" fill="#5356ee" />
-        <text x="24" y="31" fontSize="20" fontWeight="700" fill="#fff" textAnchor="middle">
-          m
-        </text>
-      </svg>
-    ),
-  },
-  {
-    name: "Depop",
-    body: "Find our latest drops on Depop.",
-    icon: (
-      <svg viewBox="0 0 48 48" className={ICON} aria-hidden>
-        <rect x="4" y="4" width="40" height="40" rx="10" fill="#ff2300" />
-        <text x="24" y="31" fontSize="20" fontWeight="700" fill="#fff" textAnchor="middle">
-          d
-        </text>
       </svg>
     ),
   },

@@ -16,9 +16,9 @@ payment for it directly, and collects trade-in and contact leads.
 **Backend** (`backend/`)
 - [FastAPI](https://fastapi.tiangolo.com) (Python) serving a small set of
   JSON endpoints behind Caddy (see `deploy/`)
-- The catalog is a JSON file (`frontend/src/data/items.json`) validated with
+- The catalog is a JSON file (`scripts/items.json`) validated with
   Pydantic on every read/write, not a database — it's edited locally with
-  `backend/scripts/add_item.py` and baked into the static frontend build
+  `scripts/add_item.py` and baked into the static frontend build
 - Sold items are tracked in a local JSON store (`backend/data/sold_state.json`)
   so a purchase can hide an item from the shop before the next deploy
 

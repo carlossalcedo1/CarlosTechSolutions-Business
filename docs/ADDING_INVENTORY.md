@@ -19,7 +19,7 @@ Get your photos onto the laptop first — AirDrop, cable, whatever. Then, from
 the project root:
 
 ```bash
-python3 backend/scripts/add_item.py
+python3 scripts/add_item.py
 ```
 
 Answer the prompts. Nothing is saved until every answer passes validation, so
@@ -103,7 +103,7 @@ The catalog and its photos are gitignored, so each computer keeps its own
 copy and `git pull` never brings inventory along. To move it — to another
 computer, or onto the server before a deploy — copy both by hand:
 
-- `frontend/src/data/items.json` — the catalog
+- `scripts/items.json` — the catalog
 - `frontend/public/items/` — the photos
 
 Copy them together: an item whose photo folder didn't come along shows
@@ -116,9 +116,21 @@ broken images.
 - **Back it up yourself.** Git isn't keeping history of it anymore, so drop a
   copy of both into iCloud/Dropbox after each batch you add
 
+## Adding photos to an existing item
+
+```bash
+python3 scripts/add_photos.py
+```
+
+Pick the item, then the subfolder of `~/catalog` holding its photos. They're
+converted the same way `add_item.py` does it (HEIC to JPEG, rotated upright,
+resized) into `frontend/public/items/<item id>/`, keeping their original
+names. Then by hand: rename them `1.jpg`, `2.jpg`, ... (1 is the main photo),
+list them in the item's `"images"` in `scripts/items.json`, and deploy.
+
 ## Fixing or removing an item
 
-There's no CLI for this yet. Both live in `frontend/src/data/items.json`:
+There's no CLI for this yet. Both live in `scripts/items.json`:
 
 - **Change a price or a typo** — edit the entry directly. Remember prices are
   in **cents**: `$749.99` is `74999`
