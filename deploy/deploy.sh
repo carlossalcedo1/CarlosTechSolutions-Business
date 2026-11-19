@@ -50,7 +50,7 @@ step "Checking the catalog"
 # Inventory is gitignored — each computer keeps its own copy (see
 # docs/ADDING_INVENTORY.md), so it's never in the repo. Stop here rather
 # than let the build or API image quietly ship without it.
-CATALOG="frontend/src/data/items.json"
+CATALOG="scripts/items.json"
 if [ ! -f "$CATALOG" ]; then
 	echo "$CATALOG is missing. Inventory isn't in git: copy it, and" >&2
 	echo "frontend/public/items/, over from the computer you add inventory on." >&2

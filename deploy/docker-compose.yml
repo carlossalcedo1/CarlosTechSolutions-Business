@@ -51,7 +51,7 @@ services:
   api:
     build:
       # Context is the repo root: the image needs backend/ and
-      # frontend/src/data/items.json — see backend/Dockerfile's own header.
+      # scripts/items.json — see backend/Dockerfile's own header.
       context: ..
       dockerfile: backend/Dockerfile
     container_name: ctsb-api
