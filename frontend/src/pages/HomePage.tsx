@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { items } from "../data/items";
-import { CATEGORIES, EBAY_PROFILE_URL, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
+import {
+  CATEGORIES,
+  CONTACT_PHONE,
+  EBAY_PROFILE_URL,
+  FACEBOOK_MARKETPLACE_URL,
+} from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
 import { PhotoCarousel } from "../components/PhotoCarousel";
 import { CleanWayMark } from "../components/CleanWayMark";
@@ -128,6 +133,12 @@ export function HomePage() {
               View services
             </Link>
           </div>
+          <p className="mt-4 text-xs text-red-600">
+            *Inventory may not be up to date, for latest offerings contact me directly at{" "}
+            <a href={`tel:${CONTACT_PHONE}`} className="font-medium whitespace-nowrap underline">
+              {CONTACT_PHONE}
+            </a>
+          </p>
 
           {/* Link-out cards rather than embedded reviews — neither eBay nor
               Facebook Marketplace has a public embed widget for profile
