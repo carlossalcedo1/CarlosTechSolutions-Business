@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Add a device to the catalog.
 
-    python backend/scripts/add_item.py
+    python scripts/add_item.py
 
 Prompts for the device details, copies and compresses its photos into the
 frontend's public folder, validates everything against the shared Item model,
@@ -17,14 +17,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# scripts/<this file> -> repo root -> backend/, so `app` imports resolve.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from pydantic import ValidationError
 
 from app.catalog import CATALOG_PATH, load_catalog, save_catalog
 from app.models import Category, Condition, Item
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_ITEMS_DIR = REPO_ROOT / "frontend" / "public" / "items"
 DEPLOY_SCRIPT = REPO_ROOT / "deploy" / "deploy.sh"
 
@@ -137,6 +138,68 @@ def ask_specs() -> list[str]:
         specs.append(line)
 
 
+def load_pillow(sources: list[Path]):
+    """Import Pillow (with HEIC support when available) for converting
+    `sources`. Returns (Image, ImageOps), or None if Pillow is missing."""
+    try:
+        import pillow_heif
+
+        pillow_heif.register_heif_opener()  # teaches Pillow to read iPhone HEICs
+        heif_available = True
+    except ImportError:
+        heif_available = False
+
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        print("  ! Pillow missing — run: pip3 install -r backend/requirements.txt")
+        return None
+
+    # A missing pillow-heif doesn't stop the script — Image.open() just raises
+    # per file below and gets skipped — so on an all-HEIC folder every photo
+    # can silently fail and the item still saves with no images. Warn up
+    # front so that failure has an obvious cause instead of looking random.
+    heic_sources = [p for p in sources if p.suffix.lower() in (".heic", ".heif")]
+    if heic_sources and not heif_available:
+        print(
+            f"  ! {len(heic_sources)} HEIC photo(s) found but pillow-heif isn't "
+            f"installed for {sys.executable}\n"
+            "    Fix: pip3 install -r backend/requirements.txt "
+            "(or activate the project's .venv) and re-run."
+        )
+    return Image, ImageOps
+
+
+def save_as_jpeg(src: Path, dest: Path, Image, ImageOps) -> tuple[int, int]:
+    """Convert one photo to an upright, resized JPEG at `dest`. Returns its
+    final (width, height); raises if the file can't be read."""
+    with Image.open(src) as img:
+        # Phones record rotation in EXIF rather than rotating pixels.
+        # Without this, portrait shots come out sideways on the site.
+        img = ImageOps.exif_transpose(img)
+
+        # Flatten transparency onto white; a PNG with an alpha channel
+        # saved straight to JPEG turns its transparent areas black.
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGBA")
+            flat = Image.new("RGB", img.size, (255, 255, 255))
+            flat.paste(img, mask=img.split()[-1])
+            img = flat
+        else:
+            img = img.convert("RGB")
+
+        if img.width > MAX_WIDTH:
+            ratio = MAX_WIDTH / img.width
+            img = img.resize((MAX_WIDTH, round(img.height * ratio)), Image.LANCZOS)
+
+        img.save(dest, "JPEG", quality=JPEG_QUALITY, optimize=True)
+        return img.size
+
+
+def find_photos(src_dir: Path) -> list[Path]:
+    return sorted(p for p in src_dir.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES)
+
+
 def copy_photos(item_id: str) -> list[str]:
     """Copy photos from PHOTOS_BASE_DIR/<subfolder> into public/items/<id>/ and
     return their web paths."""
@@ -151,37 +214,14 @@ def copy_photos(item_id: str) -> list[str]:
         print(f"  ! not a folder: {src_dir}")
         return []
 
-    sources = sorted(p for p in src_dir.iterdir() if p.suffix.lower() in IMAGE_SUFFIXES)
+    sources = find_photos(src_dir)
     if not sources:
         print(f"  ! no photos found in {src_dir}")
         return []
 
-    try:
-        import pillow_heif
-
-        pillow_heif.register_heif_opener()  # teaches Pillow to read iPhone HEICs
-        heif_available = True
-    except ImportError:
-        heif_available = False
-
-    try:
-        from PIL import Image, ImageOps
-    except ImportError:
-        print("  ! Pillow missing — run: pip3 install -r backend/requirements.txt")
+    pillow = load_pillow(sources)
+    if pillow is None:
         return []
-
-    # A missing pillow-heif doesn't stop the script — Image.open() just raises
-    # per file below and gets skipped — so on an all-HEIC folder every photo
-    # can silently fail and the item still saves with no images. Warn up
-    # front so that failure has an obvious cause instead of looking random.
-    heic_sources = [p for p in sources if p.suffix.lower() in (".heic", ".heif")]
-    if heic_sources and not heif_available:
-        print(
-            f"  ! {len(heic_sources)} HEIC photo(s) found but pillow-heif isn't "
-            f"installed for {sys.executable}\n"
-            "    Fix: pip3 install -r backend/requirements.txt "
-            "(or activate the project's .venv) and re-run."
-        )
 
     dest_dir = PUBLIC_ITEMS_DIR / item_id
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -192,34 +232,15 @@ def copy_photos(item_id: str) -> list[str]:
             print(f"  ! not found, skipping: {src}")
             continue
 
+        dest = dest_dir / f"{len(web_paths) + 1}.jpg"
         try:
-            with Image.open(src) as img:
-                # Phones record rotation in EXIF rather than rotating pixels.
-                # Without this, portrait shots come out sideways on the site.
-                img = ImageOps.exif_transpose(img)
-
-                # Flatten transparency onto white; a PNG with an alpha channel
-                # saved straight to JPEG turns its transparent areas black.
-                if img.mode in ("RGBA", "LA", "P"):
-                    img = img.convert("RGBA")
-                    flat = Image.new("RGB", img.size, (255, 255, 255))
-                    flat.paste(img, mask=img.split()[-1])
-                    img = flat
-                else:
-                    img = img.convert("RGB")
-
-                if img.width > MAX_WIDTH:
-                    ratio = MAX_WIDTH / img.width
-                    img = img.resize((MAX_WIDTH, round(img.height * ratio)), Image.LANCZOS)
-
-                dest = dest_dir / f"{len(web_paths) + 1}.jpg"
-                img.save(dest, "JPEG", quality=JPEG_QUALITY, optimize=True)
+            width, height = save_as_jpeg(src, dest, *pillow)
         except Exception as exc:  # unreadable file, unsupported codec, etc.
             print(f"  ! couldn't read {src.name} ({exc}) — skipping")
             continue
 
         kb = dest.stat().st_size / 1024
-        print(f"  + {dest.name}  <- {src.name}  ({img.width}x{img.height}, {kb:.0f} KB)")
+        print(f"  + {dest.name}  <- {src.name}  ({width}x{height}, {kb:.0f} KB)")
         web_paths.append(f"/items/{item_id}/{dest.name}")
 
     if sources and not web_paths:

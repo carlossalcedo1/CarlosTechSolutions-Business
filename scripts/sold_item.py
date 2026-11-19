@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Mark an item sold locally (off the store) and remove it from the catalog.
 
-    python backend/scripts/sold_item.py
+    python scripts/sold_item.py
 
 Lists every item currently in items.json, lets you pick one by number to
-record as sold, and repeats until you type 'exit'. A multi-unit listing
-(quantity > 1) just loses one unit and stays listed; a single-unit listing
-is removed from items.json entirely. Either way, a record of the sale is
-appended to backend/data/sold_items.json.
+record as sold, asks how many units sold (or 'all'), and repeats until you
+type 'exit'. A listing with units left over stays listed at the lower
+quantity; one with none left is removed from items.json entirely. Either
+way, a record of the sale is appended to backend/data/sold_items.json.
 
 This is for a sale made in person / outside the site. A sale made through
 the site is already handled automatically by the Stripe webhook and
@@ -22,18 +22,19 @@ import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+# scripts/<this file> -> repo root -> backend/, so `app` imports resolve.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from app.catalog import CATALOG_PATH, load_catalog, save_catalog
 from app.models import Item
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 DEPLOY_SCRIPT = REPO_ROOT / "deploy" / "deploy.sh"
 
-# backend/scripts/sold_item.py -> backend/ -> data/sold_items.json
+# scripts/sold_item.py -> repo root -> backend/data/sold_items.json
 # Same gitignored runtime-data folder as sold_state.json (see config.py) —
 # this is a local sales log, not source, and never belongs in git.
-SOLD_ITEMS_PATH = Path(__file__).resolve().parents[1] / "data" / "sold_items.json"
+SOLD_ITEMS_PATH = REPO_ROOT / "backend" / "data" / "sold_items.json"
 
 
 def load_sold_items(path: Path) -> list[dict]:
@@ -67,9 +68,21 @@ def ask_selection(count: int) -> int | None:
         print(f"  ! enter a number 1-{count}, or 'exit'")
 
 
-def ask_confirm(item: Item) -> bool:
-    raw = input(f"  Mark '{item.name}' sold locally? [y/N]: ").strip().lower()
-    return raw.startswith("y")
+def ask_units(item: Item) -> int | None:
+    """How many units of `item` sold. Returns None to cancel (blank or 0)."""
+    if item.quantity == 1:
+        raw = input(f"  Mark '{item.name}' sold locally? [y/N]: ").strip().lower()
+        return 1 if raw.startswith("y") else None
+    print(f"  '{item.name}' — quantity {item.quantity}")
+    while True:
+        raw = input(f"  How many to remove? [1-{item.quantity}, 'all', or blank to cancel]: ").strip().lower()
+        if raw in ("", "0"):
+            return None
+        if raw == "all":
+            return item.quantity
+        if raw.isdigit() and 1 <= int(raw) <= item.quantity:
+            return int(raw)
+        print(f"  ! enter a number 1-{item.quantity}, 'all', or blank to cancel")
 
 
 def ask_bool(prompt: str, *, default: bool) -> bool:
@@ -80,12 +93,12 @@ def ask_bool(prompt: str, *, default: bool) -> bool:
     return raw.startswith("y")
 
 
-def make_sold_record(item: Item) -> dict:
-    # Always logged as one unit sold, regardless of how many the listing
+def make_sold_record(item: Item, units: int) -> dict:
+    # Logged as the units sold in this one sale, not what the listing
     # started with — a bulk listing's remaining units are still for sale
     # and get their own record whenever they, in turn, sell.
     record = item.model_dump(mode="json")
-    record["quantity"] = 1
+    record["quantity"] = units
     record["soldDate"] = dt.date.today().isoformat()
     return record
 
@@ -117,27 +130,29 @@ def main() -> int:
             break
 
         item = items[index]
-        if not ask_confirm(item):
+        units = ask_units(item)
+        if units is None:
             continue
 
-        sold_records.append(make_sold_record(item))
+        sold_records.append(make_sold_record(item, units))
 
-        if item.quantity > 1:
-            items[index] = item.model_copy(update={"quantity": item.quantity - 1})
-            note = f"1 unit sold, {item.quantity - 1} remaining"
+        remaining = item.quantity - units
+        if remaining > 0:
+            items[index] = item.model_copy(update={"quantity": remaining})
+            note = f"{units} unit(s) sold, {remaining} left"
         else:
             del items[index]
-            note = "removed from the catalog"
+            note = f"{units} unit(s) sold, none left — removed from the catalog"
 
         save_catalog(items)
         save_sold_items(SOLD_ITEMS_PATH, sold_records)
-        sold_count += 1
+        sold_count += units
         print(f"  + logged sale of {item.name} — {note}")
 
     if not items and sold_count:
         print("\nCatalog is now empty.")
 
-    print(f"\nDone — {sold_count} sale(s) logged this session.")
+    print(f"\nDone — {sold_count} unit(s) sold this session.")
     print(f"Catalog now has {len(items)} item(s).")
 
     if not sold_count:
