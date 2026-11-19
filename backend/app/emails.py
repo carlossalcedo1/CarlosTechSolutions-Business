@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from html import escape
 
+from .codes import CodeItem
 from .models import Item
 
 # Mirrors CONTACT_PHONE in frontend/src/lib/constants.ts.
@@ -30,7 +31,7 @@ def format_cents(cents: int) -> str:
     return f"${dollars:,.0f}" if cents % 100 == 0 else f"${dollars:,.2f}"
 
 
-def buyer_confirmation(item: Item, *, amount_paid_cents: int, site_url: str) -> tuple[str, str, str]:
+def buyer_confirmation(item: Item | CodeItem, *, amount_paid_cents: int, site_url: str) -> tuple[str, str, str]:
     """Returns (subject, html, text)."""
     paid = format_cents(amount_paid_cents)
     returns_url = f"{site_url}/returns"
@@ -109,9 +110,10 @@ def buyer_confirmation(item: Item, *, amount_paid_cents: int, site_url: str) -> 
     return subject, html, text
 
 
-def sale_alert(item: Item, session: dict) -> tuple[str, str]:
+def sale_alert(item: Item | CodeItem, session: dict, *, code: str | None = None) -> tuple[str, str]:
     """Returns (subject, text). `session` is the Checkout Session as a plain
-    dict (main.py converts it with .to_dict())."""
+    dict (main.py converts it with .to_dict()). `code` is set for a
+    code-only listing (app/codes.py)."""
     customer = session.get("customer_details") or {}
     # Newer Stripe API versions moved shipping under collected_information;
     # check both so an account API-version bump doesn't blank this section.
@@ -150,6 +152,7 @@ def sale_alert(item: Item, session: dict) -> tuple[str, str]:
         f"  Condition:  {item.condition.value}",
         f"  Specs:      {item.specLine}",
         f"  Paid:       {paid} {currency}",
+        *([f"  Code:       {code} (code-only listing)"] if code else []),
         "",
         "BUYER",
         f"  Name:   {customer.get('name') or '(not given)'}",
@@ -169,4 +172,5 @@ def sale_alert(item: Item, session: dict) -> tuple[str, str]:
         # amounts is exactly the shape a phishing filter is trained on.
         lines.append(f"  Payment intent ID: {payment_intent}")
 
-    return f"Sold: {item.name} for {paid}", "\n".join(lines)
+    code_note = f" (code {code})" if code else ""
+    return f"Sold: {item.name} for {paid}{code_note}", "\n".join(lines)

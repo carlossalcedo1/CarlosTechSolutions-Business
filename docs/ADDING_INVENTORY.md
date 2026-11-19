@@ -128,6 +128,29 @@ resized) into `frontend/public/items/<item id>/`, keeping their original
 names. Then by hand: rename them `1.jpg`, `2.jpg`, ... (1 is the main photo),
 list them in the item's `"images"` in `scripts/items.json`, and deploy.
 
+## Code-only listings (private sales)
+
+For a buyer you're dealing with elsewhere (eBay, Marketplace, text) who
+should pay through the site instead. Run on the server:
+
+```bash
+python3 scripts/gen_code.py              # create: same prompts as add_item, minus category
+python3 scripts/gen_code.py list         # every code and its status
+python3 scripts/gen_code.py cancel K7PX  # kill an active code
+```
+
+It prints a 4-character code and a link (`<site>/code/K7PX`). The buyer opens
+the link, or types the code in "Have a code?" on the Shop page, and checks
+out like any other item. Live immediately, no deploy (it still offers one
+at the end, for any other changes you have waiting).
+
+- **Private:** never in the shop, `items.json`, or the site's code
+- **One code, one sale.** Expires after the days you choose (default 7).
+  Not case-sensitive
+- **Every code is kept** (sold, expired, cancelled) in `codes.json` on the
+  API's data volume, next to `sold_state.json`
+- The "Sold" alert email says which code was used
+
 ## Fixing or removing an item
 
 There's no CLI for this yet. Both live in `scripts/items.json`:

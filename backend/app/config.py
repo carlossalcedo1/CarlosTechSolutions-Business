@@ -45,6 +45,9 @@ class Settings(BaseSettings):
 
     sold_state_path: Path = _DEFAULT_DATA_DIR / "sold_state.json"
     subscribers_path: Path = _DEFAULT_DATA_DIR / "subscribers.json"
+    # Code-only listings (app/codes.py) — same volume, so codes survive a
+    # redeploy and gen_code.py can write them without one.
+    codes_path: Path = _DEFAULT_DATA_DIR / "codes.json"
 
     @property
     def sender_address(self) -> str:

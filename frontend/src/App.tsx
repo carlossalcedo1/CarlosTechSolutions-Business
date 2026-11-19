@@ -3,6 +3,7 @@ import { Layout } from "./components/Layout";
 import { HomePage } from "./pages/HomePage";
 import { ShopPage } from "./pages/ShopPage";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
+import { CodePage } from "./pages/CodePage";
 import { SellDevicePage } from "./pages/SellDevicePage";
 import { AboutPage } from "./pages/AboutPage";
 import { ContactPage } from "./pages/ContactPage";
@@ -29,6 +30,8 @@ export function App() {
           <Route path="shop" element={<ShopPage />} />
           <Route path="services" element={<ServicesPage />} />
           <Route path="product/:id" element={<ProductDetailPage />} />
+          <Route path="code" element={<CodePage />} />
+          <Route path="code/:code" element={<CodePage />} />
           <Route path="sell" element={<SellDevicePage />} />
           <Route path="about" element={<AboutPage />} />
           <Route path="contact" element={<ContactPage />} />

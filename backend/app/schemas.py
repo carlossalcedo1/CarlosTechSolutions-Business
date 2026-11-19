@@ -9,12 +9,22 @@ from __future__ import annotations
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
+from .codes import CodeItem
+
 
 class CheckoutRequest(BaseModel):
-    """Deliberately just an id — see payments.py: the browser never gets to
-    say what something costs."""
+    """Deliberately just an id or a code — see payments.py: the browser
+    never gets to say what something costs. Exactly one of the two."""
 
-    item_id: str
+    item_id: str | None = None
+    # A code-only listing (app/codes.py) — priced from the code's record.
+    code: str | None = Field(default=None, max_length=16)
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> "CheckoutRequest":
+        if bool(self.item_id) == bool(self.code):
+            raise ValueError("Provide an item_id or a code.")
+        return self
 
 
 class CheckoutResponse(BaseModel):
@@ -73,3 +83,14 @@ class OkResponse(BaseModel):
 
 class SoldItemsResponse(BaseModel):
     sold_item_ids: list[str]
+
+
+class CodeLookupResponse(BaseModel):
+    """What a buyer sees after typing a code: the listing's public fields.
+    `sold` so a code that's been used shows the item as Sold rather than
+    "not found" — the buyer who paid may well open the link again."""
+
+    code: str
+    sold: bool
+    expiresAt: str
+    item: CodeItem

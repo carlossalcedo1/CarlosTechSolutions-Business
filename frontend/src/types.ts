@@ -36,3 +36,26 @@ export interface Item {
   featured: boolean;
   dateAdded: string; // ISO date
 }
+
+/** What the product page needs to render — shared by catalog items and
+ *  code-only listings (backend/app/codes.py), which have no category,
+ *  quantity, or shop-grid fields. */
+export type Listing = Pick<
+  Item,
+  | "name"
+  | "priceCents"
+  | "condition"
+  | "model"
+  | "storage"
+  | "inventoryId"
+  | "specs"
+  | "description"
+  | "images"
+>;
+
+export interface CodeLookup {
+  code: string;
+  sold: boolean;
+  expiresAt: string;
+  item: Listing & { id: string };
+}

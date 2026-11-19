@@ -16,11 +16,14 @@ from __future__ import annotations
 
 import stripe
 
+from .codes import CodeItem
 from .config import Settings
 from .models import Item
 
 
-def create_checkout_session(*, item: Item, settings: Settings) -> stripe.checkout.Session:
+def create_checkout_session(
+    *, item: Item | CodeItem, settings: Settings, code: str | None = None
+) -> stripe.checkout.Session:
     stripe.api_key = settings.stripe_secret_key
     return stripe.checkout.Session.create(
         mode="payment",
@@ -58,7 +61,9 @@ def create_checkout_session(*, item: Item, settings: Settings) -> stripe.checkou
         allow_promotion_codes=True,
         # Read back in the webhook to know which item to mark sold — never
         # trust anything the client could have sent instead.
-        metadata={"item_id": item.id},
+        # A code sale also carries its code, which is how the webhook knows
+        # to look the item up in the code store instead of the catalog.
+        metadata={"item_id": item.id, **({"code": code} if code else {})},
         success_url=f"{settings.site_url}/checkout/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{settings.site_url}/checkout/cancelled",
     )

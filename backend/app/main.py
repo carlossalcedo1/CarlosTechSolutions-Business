@@ -16,6 +16,7 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import load_catalog
+from .codes import CodeStore, normalize_code
 from .config import Settings, get_settings
 from .emails import buyer_confirmation, sale_alert
 from .mailer import send_email
@@ -24,6 +25,7 @@ from .ratelimit import RateLimiter, client_ip
 from .schemas import (
     CheckoutRequest,
     CheckoutResponse,
+    CodeLookupResponse,
     ContactRequest,
     OkResponse,
     SoldItemsResponse,
@@ -39,6 +41,12 @@ logger = logging.getLogger("app.main")
 # which endpoint it hits.
 _form_limiter = RateLimiter(max_requests=5, window_seconds=60)
 
+# Codes are short (see app/codes.py), so guessing is the threat: both the
+# lookup and a code checkout spend from this one budget per IP. Generous
+# enough for a buyer who mistypes a few times, far too slow to sweep ~920k
+# codes before they expire.
+_code_limiter = RateLimiter(max_requests=10, window_seconds=60)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,6 +57,7 @@ async def lifespan(app: FastAPI):
     items = load_catalog()
     app.state.catalog = {item.id: item for item in items}
     app.state.sold_store = SoldStore(settings.sold_state_path)
+    app.state.code_store = CodeStore(settings.codes_path)
     logger.info("Loaded %d catalog items", len(items))
     yield
 
@@ -92,8 +101,28 @@ def sold_items(request: Request):
     return SoldItemsResponse(sold_item_ids=sold_out_ids)
 
 
+@app.get("/api/codes/{code}", response_model=CodeLookupResponse)
+def lookup_code(code: str, request: Request):
+    _code_limiter.check(client_ip(request))
+    record = request.app.state.code_store.get(code)
+    # Expired, cancelled, and never-existed all get the same answer, so a
+    # guesser can't tell a dead code from a wrong one. Sold stays visible
+    # (as Sold) — the buyer who paid may open the link again.
+    if record is None or record.status not in ("active", "sold"):
+        raise HTTPException(status_code=404, detail="That code doesn't exist or has expired.")
+    return CodeLookupResponse(
+        code=record.code,
+        sold=record.status == "sold",
+        expiresAt=record.expiresAt.isoformat(),
+        item=record.item,
+    )
+
+
 @app.post("/api/checkout", response_model=CheckoutResponse)
 def checkout(body: CheckoutRequest, request: Request, settings: Settings = Depends(get_settings)):
+    if body.code:
+        return _checkout_code(body.code, request, settings)
+
     item = request.app.state.catalog.get(body.item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -104,6 +133,21 @@ def checkout(body: CheckoutRequest, request: Request, settings: Settings = Depen
         raise HTTPException(status_code=500, detail="Stripe is not configured yet")
 
     session = create_checkout_session(item=item, settings=settings)
+    return CheckoutResponse(url=session.url)
+
+
+def _checkout_code(code: str, request: Request, settings: Settings) -> CheckoutResponse:
+    _code_limiter.check(client_ip(request))
+    record = request.app.state.code_store.get(code)
+    if record is None or record.status in ("expired", "cancelled"):
+        raise HTTPException(status_code=404, detail="That code doesn't exist or has expired.")
+    if record.status == "sold":
+        raise HTTPException(status_code=409, detail="This item has already sold")
+    if not settings.stripe_secret_key:
+        raise HTTPException(status_code=500, detail="Stripe is not configured yet")
+
+    # Priced from the code's own record — rule 1 in payments.py.
+    session = create_checkout_session(item=record.item, settings=settings, code=record.code)
     return CheckoutResponse(url=session.url)
 
 
@@ -133,14 +177,23 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
         # access but not .get() (they raise, telling you to convert) — easiest
         # to convert once here rather than bracket-access every field below.
         session = event["data"]["object"].to_dict()
-        item_id = (session.get("metadata") or {}).get("item_id")
-        item = request.app.state.catalog.get(item_id) if item_id else None
+        metadata = session.get("metadata") or {}
+        item_id = metadata.get("item_id")
+        code = normalize_code(metadata.get("code") or "") or None
+
+        if code:
+            # A code sale: the item lives in the code store, not the
+            # catalog, and "sold" is the code's own state, not a count.
+            record = request.app.state.code_store.mark_sold(code, session_id=session.get("id"))
+            item = record.item if record else None
+        else:
+            item = request.app.state.catalog.get(item_id) if item_id else None
+            if item is not None:
+                store.record_sale(item.id)
 
         if item is None:
-            logger.warning("checkout.session.completed with unknown item_id=%r", item_id)
+            logger.warning("checkout.session.completed with unknown item_id=%r code=%r", item_id, code)
         else:
-            store.record_sale(item.id)
-
             buyer_email = (session.get("customer_details") or {}).get("email")
             if buyer_email:
                 subject, body_html, body_text = buyer_confirmation(
@@ -161,7 +214,7 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
                     reply_to=settings.notify_email or None,
                 )
             if settings.sale_notify_address:
-                subject, body_text = sale_alert(item, session)
+                subject, body_text = sale_alert(item, session, code=code)
                 send_email(settings, to=settings.sale_notify_address, subject=subject, text=body_text)
 
     store.mark_processed(event["id"])

@@ -11,6 +11,8 @@
  * nothing for CORS to even do here.
  */
 
+import type { CodeLookup } from "../types";
+
 export class ApiError extends Error {}
 
 async function request(path: string, init?: RequestInit): Promise<Response> {
@@ -68,6 +70,25 @@ export function getSoldItemIds() {
 
 export function checkout(itemId: string) {
   return post<{ url: string }>("/checkout", { item_id: itemId });
+}
+
+// Code-only listings (backend/app/codes.py). The lookup's 404 message is
+// shown to the buyer as-is, so it's read here rather than through get().
+export async function lookupCode(code: string): Promise<CodeLookup> {
+  const res = await request(`/codes/${encodeURIComponent(code)}`);
+  if (res.ok) return res.json() as Promise<CodeLookup>;
+  let message = `Request failed (${res.status})`;
+  try {
+    const data = await res.json();
+    if (typeof data?.detail === "string") message = data.detail;
+  } catch {
+    // Not JSON — keep the generic message.
+  }
+  throw new ApiError(message);
+}
+
+export function checkoutCode(code: string) {
+  return post<{ url: string }>("/checkout", { code });
 }
 
 export interface ContactPayload {

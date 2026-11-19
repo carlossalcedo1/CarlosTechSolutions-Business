@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { items } from "../data/items";
 import { CATEGORIES, EBAY_PROFILE_URL, FACEBOOK_MARKETPLACE_URL } from "../lib/constants";
 import { ProductCard } from "../components/ProductCard";
+import { CodeEntry } from "../components/CodeEntry";
 import { useSoldItemIds } from "../lib/useSoldItemIds";
 import type { Category, Condition } from "../types";
 
@@ -121,6 +122,10 @@ export function ShopPage() {
             <option value="price-desc">Price: high to low</option>
           </select>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <CodeEntry />
       </div>
 
       <p className="mt-4 text-sm text-muted">
