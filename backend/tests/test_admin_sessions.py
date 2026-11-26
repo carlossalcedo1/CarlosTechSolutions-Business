@@ -13,12 +13,7 @@ import time
 
 import pytest
 
-from backend.app.sessions import (
-    ABSOLUTE_DAYS,
-    COOKIE_NAME,
-    IDLE_DAYS,
-    SessionStore,
-)
+from backend.app.sessions import COOKIE_NAME, SESSION_DAYS, SessionStore
 
 DAY = 24 * 60 * 60
 
@@ -111,43 +106,52 @@ def test_revoke_all_on_a_stranger_does_nothing(store):
 # --- expiry -----------------------------------------------------------------
 
 
-def test_idle_session_expires(store, monkeypatch):
+def test_session_lasts_three_days():
+    assert SESSION_DAYS == 3
+
+
+def test_session_is_alive_just_before_the_deadline(store, monkeypatch):
     token = store.create("cmsal06")
-    later = time.time() + (IDLE_DAYS + 1) * DAY
-    monkeypatch.setattr(time, "time", lambda: later)
+    almost = time.time() + SESSION_DAYS * DAY - 60
+    monkeypatch.setattr(time, "time", lambda: almost)
+    assert store.lookup(token) == "cmsal06"
+
+
+def test_session_expires_at_the_deadline(store, monkeypatch):
+    # Dead *at* the mark, not after it: expiry is `expires_at <= now`.
+    token = store.create("cmsal06")
+    deadline = time.time() + SESSION_DAYS * DAY
+    monkeypatch.setattr(time, "time", lambda: deadline)
     assert store.lookup(token) is None
 
 
-def test_using_a_session_slides_its_expiry(store, monkeypatch):
+def test_using_a_session_does_not_extend_it(store, monkeypatch):
+    # The point of a flat window. If lookup() ever starts sliding the
+    # deadline again, an admin who keeps a tab open is never asked to sign
+    # in — which is exactly what this lifetime exists to prevent.
     token = store.create("cmsal06")
+    start = time.time()
 
-    # Six days in: still valid, and this use pushes the deadline out.
-    six_days = time.time() + 6 * DAY
-    monkeypatch.setattr(time, "time", lambda: six_days)
-    assert store.lookup(token) == "cmsal06"
-
-    # Day nine would have been past the original seven-day deadline.
-    nine_days = six_days + 3 * DAY
-    monkeypatch.setattr(time, "time", lambda: nine_days)
-    assert store.lookup(token) == "cmsal06"
-
-
-def test_sliding_cannot_outrun_the_absolute_ceiling(store, monkeypatch):
-    # Without the ceiling, a tab polling /api/admin/me would stay signed in
-    # forever. This is the test that would fail if someone "simplified" the
-    # min() in lookup() away.
-    token = store.create("cmsal06")
-    now = time.time()
-    for day in range(1, ABSOLUTE_DAYS + 2):
-        moment = now + day * DAY
+    for hours in range(1, SESSION_DAYS * 24):
+        moment = start + hours * 60 * 60
         monkeypatch.setattr(time, "time", lambda m=moment: m)
-        result = store.lookup(token)
-        # Dead *at* the 30-day mark, not after it: the ceiling is
-        # created_at + ABSOLUTE_SECONDS and expiry is `expires_at <= now`.
-        if day >= ABSOLUTE_DAYS:
-            assert result is None, f"still alive on day {day}"
-        else:
-            assert result == "cmsal06", f"died early on day {day}"
+        assert store.lookup(token) == "cmsal06", f"died early at {hours}h"
+
+    # Used constantly right up to the deadline, and still out on time.
+    monkeypatch.setattr(time, "time", lambda: start + SESSION_DAYS * DAY)
+    assert store.lookup(token) is None
+
+
+def test_a_signed_in_lookup_does_not_rewrite_the_file(tmp_path):
+    # Consequence of dropping the slide, and worth keeping: the common case
+    # is now a pure read, so a page load costs no disk write.
+    path = tmp_path / "sessions.json"
+    store = SessionStore(path)
+    token = store.create("cmsal06")
+    before = path.stat().st_mtime_ns
+    for _ in range(5):
+        assert store.lookup(token) == "cmsal06"
+    assert path.stat().st_mtime_ns == before
 
 
 # --- the HTTP surface -------------------------------------------------------

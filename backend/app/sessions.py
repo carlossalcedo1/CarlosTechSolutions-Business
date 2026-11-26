@@ -15,11 +15,12 @@ is enough here, unlike login_codes.py's PBKDF2 — that was protecting an
 8-digit code with only 10^8 possibilities, where an offline sweep is
 trivial. 256 bits of entropy has no such problem.
 
-Expiry is sliding with a hard ceiling: each time a session is seen it gets
-another IDLE_DAYS, but never past ABSOLUTE_DAYS from when it was created.
-Sliding alone means a tab left open stays signed in forever; a fixed expiry
-alone means being logged out mid-task on day seven. Both bounds together
-are the usual answer.
+Expiry is a flat three days from sign-in. Not sliding: a session that
+renews itself on use would never expire for anyone actually using it,
+which is the opposite of "sign in again after three days". The cost is
+that it can run out mid-task on day three — that's the deliberate trade,
+and it's why the window is short enough to be predictable rather than a
+surprise once a month.
 """
 
 from __future__ import annotations
@@ -35,18 +36,11 @@ from .login_codes import normalize_username
 
 COOKIE_NAME = "nexfix_admin_session"
 
-# Signed out after this long without using it...
-IDLE_DAYS = 7
-# ...and after this long regardless, however active you've been.
-ABSOLUTE_DAYS = 30
+# How long a sign-in lasts, measured from the moment the code was accepted.
+# Using the session does not extend it.
+SESSION_DAYS = 3
 
-_IDLE_SECONDS = IDLE_DAYS * 24 * 60 * 60
-_ABSOLUTE_SECONDS = ABSOLUTE_DAYS * 24 * 60 * 60
-
-# Only write the file back when the expiry actually moves by more than this.
-# Without it every /api/admin/me would rewrite sessions.json, which on a
-# polling frontend is a disk write per request for no gain.
-_SLIDE_GRANULARITY_SECONDS = 60 * 60
+_SESSION_SECONDS = SESSION_DAYS * 24 * 60 * 60
 
 
 def _hash(token: str) -> str:
@@ -87,7 +81,7 @@ class SessionStore:
             sessions[_hash(token)] = {
                 "username": username,
                 "created_at": now,
-                "expires_at": now + _IDLE_SECONDS,
+                "expires_at": now + _SESSION_SECONDS,
             }
             self._write(data)
 
@@ -96,8 +90,9 @@ class SessionStore:
     def lookup(self, token: str | None) -> str | None:
         """The username this token belongs to, or None.
 
-        Slides the expiry forward as a side effect — this is the "you're
-        still here" signal, so it's the right place for it.
+        Read-only with respect to the deadline: using a session does not
+        extend it. That also means the common case — a signed-in admin
+        loading a page — never writes to disk at all.
         """
         if not token:
             return None
@@ -107,23 +102,17 @@ class SessionStore:
         with self._lock:
             data = self._read()
             sessions = data.setdefault("sessions", {})
+            before = len(sessions)
             self._drop_expired(sessions, now)
 
             record = sessions.get(key)
-            if record is None:
-                # Covers expired, revoked and never-existed alike.
-                self._write(data)
-                return None
-
-            # Slide, but never past the absolute ceiling, and only write if
-            # the value meaningfully moved.
-            ceiling = record["created_at"] + _ABSOLUTE_SECONDS
-            new_expiry = min(now + _IDLE_SECONDS, ceiling)
-            if new_expiry - record["expires_at"] > _SLIDE_GRANULARITY_SECONDS:
-                record["expires_at"] = new_expiry
+            # Only write when something was actually swept, so a normal
+            # signed-in request is a pure read.
+            if len(sessions) != before:
                 self._write(data)
 
-            return record["username"]
+            # None covers expired, revoked and never-existed alike.
+            return record["username"] if record else None
 
     def revoke(self, token: str | None) -> bool:
         """Sign out this one device. Returns whether anything was removed."""
