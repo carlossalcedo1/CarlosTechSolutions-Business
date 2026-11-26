@@ -17,6 +17,7 @@ import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { HelpCenterPage } from "./pages/HelpCenterPage";
 import { PromptworksPage } from "./pages/PromptworksPage";
 import { RhinoTradePage } from "./pages/RhinoTradePage";
+import { AdminLoginPage } from "./pages/AdminLoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ScrollToTop } from "./components/ScrollToTop";
 
@@ -44,6 +45,7 @@ export function App() {
           <Route path="privacy" element={<PrivacyPolicyPage />} />
           <Route path="promptworks" element={<PromptworksPage />} />
           <Route path="rhinotrade" element={<RhinoTradePage />} />
+          <Route path="login" element={<AdminLoginPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

@@ -1,5 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import { MissionMark } from "./MissionMark";
+import { PersonMark } from "./PersonMark";
+import { useAdminSession } from "../lib/useAdminSession";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "font-semibold text-ink" : "text-ink hover:text-brand";
@@ -8,6 +10,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 // and primary nav. Everything wraps rather than collapsing into a
 // hamburger, so every link stays reachable on a phone.
 export function Header() {
+  const { user } = useAdminSession();
+
   return (
     <header className="border-b border-hairline">
       {/* Row 1: utility bar. Kept deliberately short — PromptWorks and
@@ -26,11 +30,51 @@ export function Header() {
               <span className="hidden sm:inline">Need help?</span>
             </Link>
           </div>
-          {/* "Nationwide" dropped below sm — the row was overflowing onto
-              a second line on a phone otherwise. */}
-          <span>
-            Gainesville, FL &amp; <span className="hidden sm:inline">Nationwide </span>Shipping
-          </span>
+          {/* Right-hand group mirrors the left one — same flex, same gap,
+              same icon-then-label shape — so the bar reads as one row of
+              utility links rather than a label with a button bolted on.
+              The admin link sits outboard of the location text because
+              account controls are the last thing in a utility bar
+              everywhere else on the web, and that's the muscle memory. */}
+          <div className="flex items-center gap-4">
+            {/* Everything after the city drops below sm. It used to be just
+                "Nationwide" that went, which was enough when this span had
+                the right-hand side to itself; sharing the row with the admin
+                link, the whole tail has to go or the bar wraps. */}
+            <span className="whitespace-nowrap">
+              Gainesville, FL
+              <span className="hidden sm:inline"> &amp; Nationwide Shipping</span>
+            </span>
+            {/* Signed out: person icon + "Log in". Signed in: just the
+                greeting — the name is the affordance at that point, and the
+                icon alongside it only competes with it.
+                There's no auth yet; useAdminSession always reports signed
+                out, so today this always renders the first branch. */}
+            {/* Negative margin cancels the padding, so the hit area grows to ~26px
+                for the icon-only phone state without the link taking up any
+                more room in the row than its text does. */}
+            <Link
+              to="/login"
+              className="-m-1.5 flex items-center gap-1.5 p-1.5 hover:text-brand"
+            >
+              {user ? (
+                <span className="whitespace-nowrap">
+                  {/* Just the name on a phone — "Hello, " is the first thing
+                      worth losing when the row runs out of room. */}
+                  <span className="hidden sm:inline">Hello, </span>
+                  {user.firstName}
+                </span>
+              ) : (
+                <>
+                  <PersonMark className="h-3.5 w-3.5" />
+                  {/* Label drops below sm, same trick as "Need help?" above:
+                      the icon alone is still a 14px-plus tap target, and the
+                      row went to two lines on a phone with it in. */}
+                  <span className="hidden sm:inline">Log in</span>
+                </>
+              )}
+            </Link>
+          </div>
         </div>
       </div>
 
