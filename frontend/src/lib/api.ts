@@ -124,3 +124,29 @@ export function submitTradeIn(payload: TradeInPayload) {
 export function subscribe(email: string) {
   return post<{ ok: boolean }>("/subscribe", { email });
 }
+
+/**
+ * Step one of admin sign-in: ask the backend to email a confirmation code.
+ *
+ * THE ENDPOINT DOESN'T EXIST YET. The UI is built against this contract so
+ * that standing the route up is the only thing left to do:
+ *
+ *   POST /api/admin/login   { "email": "someone@example.com" }
+ *     200  { "ok": true }                     code sent, show the "check your
+ *                                             inbox" state
+ *     4xx  { "detail": "<message>" }          shown to the user verbatim
+ *
+ * For an address that isn't on the allowlist, `detail` must be exactly
+ * "Email has not been registered." — `post()` above surfaces FastAPI's
+ * `detail` string as the ApiError message, so whatever the server says is
+ * what the user reads, and the page doesn't special-case it.
+ *
+ * Worth knowing when you build it: answering "registered" vs "not registered"
+ * tells anyone who asks which addresses are admins. That's the behaviour that
+ * was asked for and it's fine for a private panel, but it's the reason this
+ * route wants a tight per-IP rate limit (app/ratelimit.py) — otherwise it's
+ * an address oracle anyone can enumerate.
+ */
+export function requestAdminLoginCode(email: string) {
+  return post<{ ok: boolean }>("/admin/login", { email });
+}
