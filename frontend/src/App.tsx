@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { HomePage } from "./pages/HomePage";
 import { ShopPage } from "./pages/ShopPage";
@@ -21,6 +21,10 @@ import { AdminLoginPage } from "./pages/AdminLoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { AdminSessionProvider } from "./lib/useAdminSession";
+import { AdminLayout } from "./components/AdminLayout";
+import { AdminListPage } from "./pages/admin/AdminListPage";
+import { AdminCodesPage } from "./pages/admin/AdminCodesPage";
+import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
 
 export function App() {
   return (
@@ -51,6 +55,20 @@ export function App() {
           <Route path="rhinotrade" element={<RhinoTradePage />} />
           <Route path="login" element={<AdminLoginPage />} />
           <Route path="*" element={<NotFoundPage />} />
+        </Route>
+
+        {/* The panel sits outside the shop's Layout on purpose: its own
+            frame, no shop header or footer, and AdminLayout turns anyone
+            without a session away before any of it renders. That guard is
+            for the look of the thing, not the security of it — what
+            actually protects admin data is require_admin on the API
+            routes, since a client-side check is only ever a suggestion. */}
+        <Route path="admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="/admin/list" replace />} />
+          <Route path="list" element={<AdminListPage />} />
+          <Route path="codes" element={<AdminCodesPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
+          <Route path="*" element={<Navigate to="/admin/list" replace />} />
         </Route>
       </Routes>
       </AdminSessionProvider>
