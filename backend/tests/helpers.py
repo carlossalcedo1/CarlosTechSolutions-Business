@@ -29,10 +29,12 @@ ITEM_FIELDS = {
 }
 
 
-def make_item(item_id: str = "ipad-air", *, quantity: int = 1, **overrides) -> Item:
+def make_item(
+    item_id: str = "ipad-air", *, quantity: int = 1, category: str = "Tablets", **overrides
+) -> Item:
     return Item(
         id=item_id,
-        category="Tablets",
+        category=category,
         quantity=quantity,
         featured=False,
         dateAdded="2026-11-20",

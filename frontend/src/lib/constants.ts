@@ -1,9 +1,12 @@
-import type { Category } from "../types";
+import type { Category, Condition } from "../types";
 
 // Single source of truth for the category list — used by the header nav
 // row, the homepage category tiles, and the shop page filter chips, so
 // they can never drift out of sync with each other.
 export const CATEGORIES: Category[] = ["Phones", "Tablets", "Computers", "Accessories"];
+
+/** Mirrors backend/app/models.py's Condition enum, best first. */
+export const CONDITIONS: Condition[] = ["New", "A+ - Excellent", "B - Good", "C - Fair"];
 
 /**
  * Two inboxes, split by what the message is asking for. Keeping them apart

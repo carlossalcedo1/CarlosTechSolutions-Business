@@ -490,6 +490,14 @@ def require_admin(request: Request) -> str:
     return username
 
 
+# Inventory management for the admin panel. require_admin goes on the whole
+# router here rather than on each route inside it, so a route added there
+# later is guarded whether or not whoever writes it remembers to.
+from .admin_inventory import router as admin_inventory_router  # noqa: E402
+
+app.include_router(admin_inventory_router, dependencies=[Depends(require_admin)])
+
+
 @app.get("/api/admin/me", response_model=AdminMeResponse)
 def admin_me(request: Request):
     """Who, if anyone, is signed in on this browser.

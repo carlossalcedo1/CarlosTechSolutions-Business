@@ -11,7 +11,7 @@
  * nothing for CORS to even do here.
  */
 
-import type { CodeLookup } from "../types";
+import type { CodeLookup, Item, Category } from "../types";
 
 export class ApiError extends Error {}
 
@@ -29,6 +29,51 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function errorMessage(res: Response): Promise<string> {
+  let message = `Request failed (${res.status})`;
+  try {
+    const data = await res.json();
+    // FastAPI validation errors are a list of {msg, loc, ...}; our own
+    // HTTPException(detail=...) calls are a plain string. Handle both
+    // rather than showing "[object Object]" for the former.
+    if (Array.isArray(data?.detail)) {
+      message =
+        data.detail
+          .map((d: { msg?: string }) => d.msg)
+          .filter(Boolean)
+          .join(" ") || message;
+    } else if (typeof data?.detail === "string") {
+      message = data.detail;
+    }
+  } catch {
+    // Body wasn't JSON — keep the generic status-code message.
+  }
+  return message;
+}
+
+/** Any method, server's own error message on failure. The admin routes use
+ *  this for GETs too, so a 401 or 503 says why instead of "Request failed". */
+async function send<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await request(path, init);
+  if (!res.ok) throw new ApiError(await errorMessage(res));
+  return res.json() as Promise<T>;
+}
+
+async function patch<T>(path: string, body: unknown): Promise<T> {
+  return send<T>(path, {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Multipart, for photo uploads. No content-type header on purpose: the
+ *  browser has to write its own, because it carries the boundary string
+ *  the server needs to split the parts apart. */
+async function postForm<T>(path: string, form: FormData): Promise<T> {
+  return send<T>(path, { method: "POST", body: form });
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await request(path, {
     method: "POST",
@@ -37,25 +82,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!res.ok) {
-    let message = `Request failed (${res.status})`;
-    try {
-      const data = await res.json();
-      // FastAPI validation errors are a list of {msg, loc, ...}; our own
-      // HTTPException(detail=...) calls are a plain string. Handle both
-      // rather than showing "[object Object]" for the former.
-      if (Array.isArray(data?.detail)) {
-        message =
-          data.detail
-            .map((d: { msg?: string }) => d.msg)
-            .filter(Boolean)
-            .join(" ") || message;
-      } else if (typeof data?.detail === "string") {
-        message = data.detail;
-      }
-    } catch {
-      // Body wasn't JSON — keep the generic status-code message.
-    }
-    throw new ApiError(message);
+    throw new ApiError(await errorMessage(res));
   }
 
   return res.json() as Promise<T>;
@@ -192,4 +219,83 @@ export function getAdminSession() {
  *  whether or not the browser honours the cookie clear. */
 export function adminLogout() {
   return post<{ ok: boolean }>("/admin/logout", {});
+}
+
+// --- Admin inventory ---------------------------------------------------------
+//
+// A front end to scripts/add_item.py and scripts/sold_item.py — see
+// backend/app/admin_inventory.py. Every route needs a signed-in admin.
+
+/** The catalog entry as the admin sees it. The shop's Item type doesn't
+ *  carry quantity because the shop never needed it; the panel does. */
+export type AdminItem = Item & {
+  quantity: number;
+  /** Still for sale: catalog quantity minus anything sold online. */
+  remaining: number;
+};
+
+export type AdminInventory = {
+  items: AdminItem[];
+  counts: Record<Category, number>;
+  /** False on the deployed container, which has no repo to edit. */
+  repoAvailable: boolean;
+  pendingDeploy: boolean;
+};
+
+export function getAdminInventory() {
+  return send<AdminInventory>("/admin/inventory");
+}
+
+/** Fields named exactly as the API's form expects; photos appended as
+ *  repeated "photos" parts, in the order they should appear. */
+export function createListing(form: FormData) {
+  return postForm<AdminItem>("/admin/inventory", form);
+}
+
+export type EditableField =
+  | "price"
+  | "quantity"
+  | "condition"
+  | "category"
+  | "brand"
+  | "model"
+  | "storage"
+  | "inventoryId"
+  | "specLine"
+  | "specs"
+  | "featured";
+
+export function editListing(id: string, field: EditableField, value: string | boolean) {
+  return patch<{ before: AdminItem; after: AdminItem }>(
+    `/admin/inventory/${encodeURIComponent(id)}`,
+    { field, value },
+  );
+}
+
+/** "Delete" in the panel: log the sale and take the units off, dropping the
+ *  listing at zero — sold_item.py's behaviour. `units` omitted means all. */
+export function markListingSold(id: string, units?: number) {
+  return post<{ soldUnits: number; remaining: number; removed: boolean }>(
+    `/admin/inventory/${encodeURIComponent(id)}/sold`,
+    units === undefined ? {} : { units },
+  );
+}
+
+export type DeployStatus = {
+  status: "idle" | "running" | "succeeded" | "failed" | "unknown";
+  startedAt?: number;
+  finishedAt?: number;
+  exitCode?: number;
+  /** False where deploy.sh isn't present — the deployed container. */
+  available: boolean;
+  pendingDeploy: boolean;
+  log: string[];
+};
+
+export function getDeployStatus() {
+  return send<DeployStatus>("/admin/deploy");
+}
+
+export function startDeploy() {
+  return send<DeployStatus>("/admin/deploy", { method: "POST" });
 }

@@ -19,6 +19,9 @@ from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .catalog import CATALOG_PATH
+from .inventory import DEPLOY_SCRIPT, PUBLIC_ITEMS_DIR, SOLD_ITEMS_PATH
+
 # backend/app/config.py -> backend/ -> data/
 _DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
@@ -82,6 +85,19 @@ class Settings(BaseSettings):
     # Live admin sessions (app/sessions.py). Deleting this file signs
     # everyone out, which is the blunt version of revoke_all.
     sessions_path: Path = _DEFAULT_DATA_DIR / "sessions.json"
+
+    # Where the admin panel's inventory editing reads and writes. These
+    # default to the repo's own files — the same ones scripts/add_item.py
+    # and scripts/sold_item.py use — and exist as settings mainly so tests
+    # can point every write at a temp directory instead of real inventory.
+    catalog_path: Path = CATALOG_PATH
+    public_items_dir: Path = PUBLIC_ITEMS_DIR
+    sold_items_path: Path = SOLD_ITEMS_PATH
+    deploy_script: Path = DEPLOY_SCRIPT
+    # What the panel's Deploy button last did, and its output. Runtime
+    # state on the data volume, same as everything else in there.
+    deploy_state_path: Path = _DEFAULT_DATA_DIR / "deploy_state.json"
+    deploy_log_path: Path = _DEFAULT_DATA_DIR / "deploy.log"
 
     @property
     def sender_address(self) -> str:

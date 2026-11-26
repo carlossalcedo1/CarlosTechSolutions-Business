@@ -25,6 +25,10 @@ import { AdminLayout } from "./components/AdminLayout";
 import { AdminListPage } from "./pages/admin/AdminListPage";
 import { AdminCodesPage } from "./pages/admin/AdminCodesPage";
 import { AdminSettingsPage } from "./pages/admin/AdminSettingsPage";
+import { CreateListingPage } from "./pages/admin/list/CreateListingPage";
+import { PickListingPage } from "./pages/admin/list/PickListingPage";
+import { EditListingPage } from "./pages/admin/list/EditListingPage";
+import { DeleteListingPage } from "./pages/admin/list/DeleteListingPage";
 
 export function App() {
   return (
@@ -66,6 +70,16 @@ export function App() {
         <Route path="admin" element={<AdminLayout />}>
           <Route index element={<Navigate to="/admin/list" replace />} />
           <Route path="list" element={<AdminListPage />} />
+          {/* Each step is a route, so a phone's back button walks back
+              through a flow instead of leaving the panel. The pickers are
+              keyed by mode: they're the same component at the same spot in
+              the tree, and React would otherwise carry the search text from
+              Edit's picker into Delete's. */}
+          <Route path="list/create" element={<CreateListingPage />} />
+          <Route path="list/edit" element={<PickListingPage key="edit" mode="edit" />} />
+          <Route path="list/edit/:id" element={<EditListingPage />} />
+          <Route path="list/delete" element={<PickListingPage key="delete" mode="delete" />} />
+          <Route path="list/delete/:id" element={<DeleteListingPage />} />
           <Route path="codes" element={<AdminCodesPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="*" element={<Navigate to="/admin/list" replace />} />

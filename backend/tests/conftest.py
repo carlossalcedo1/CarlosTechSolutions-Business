@@ -60,6 +60,17 @@ def settings(tmp_path) -> Settings:
         login_codes_path=tmp_path / "login_codes.json",
         passkeys_path=tmp_path / "passkeys.json",
         sessions_path=tmp_path / "sessions.json",
+        # Inventory editing defaults to the repo's real items.json, photos
+        # and sold log. Every one of these has to be redirected, or a test
+        # that creates a listing writes it into the developer's actual
+        # catalog. deploy_script points at a file that's never executed —
+        # Popen is patched wherever a test reaches the deploy route.
+        catalog_path=tmp_path / "items.json",
+        public_items_dir=tmp_path / "frontend" / "public" / "items",
+        sold_items_path=tmp_path / "sold_items.json",
+        deploy_script=tmp_path / "deploy" / "deploy.sh",
+        deploy_state_path=tmp_path / "deploy_state.json",
+        deploy_log_path=tmp_path / "deploy.log",
         admin_usernames="cmsal06",
     )
 
