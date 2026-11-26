@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import {
   requestAdminLoginCode,
   verifyAdminLoginCode,
@@ -11,22 +11,33 @@ import { useAdminSession } from "../lib/useAdminSession";
 import { CODE_LENGTH } from "../lib/adminLogin";
 
 // Admin sign-in, in two steps: a username gets an 8-digit code pushed to
-// the phone registered to it, then that code gets typed back here.
+// the phone registered to it, then that code gets typed back here. A
+// verified code sets the session cookie and drops you into the panel.
 //
-// A verified code doesn't sign anyone in yet. The backend burns it and
-// returns a bare ok — there's no admin panel to hold a session open, so
-// issuing a token now would mean designing its lifetime and revocation
-// against nothing. The confirmed state below says so rather than dropping
-// the user somewhere that looks signed in and isn't.
+// This page never shows a "you are signed in" screen of its own. Being
+// signed in has somewhere to be now, so landing there is the confirmation;
+// a card saying it instead would be a dead end you'd have to click out of.
+// That applies on arrival too: reaching /login with a live session sends
+// you straight through rather than offering to burn a fresh code.
 //
 // Every error message shown here comes from the server's own `detail`, so
 // the wording lives in backend/app/main.py. Nothing on this page decides
 // what a failure says.
 export function AdminLoginPage() {
-  const { user, loading, refresh, signOut } = useAdminSession();
+  const { user, loading, refresh } = useAdminSession();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // AdminLayout sends the page you were heading for when it bounces you
+  // here, so signing in resumes that rather than always dumping you on the
+  // panel's first tab. Only in-app paths are honoured — a `from` is state
+  // off a navigation and shouldn't be able to become an off-site redirect.
+  const requested = (location.state as { from?: string } | null)?.from;
+  const target = requested?.startsWith("/admin") ? requested : "/admin";
+
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
-  const [step, setStep] = useState<"username" | "code" | "done">("username");
+  const [step, setStep] = useState<"username" | "code">("username");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +66,7 @@ export function AdminLoginPage() {
       // The cookie is set by now; re-asking is what lights up the header's
       // greeting without a reload.
       await refresh();
-      setStep("done");
+      navigate(target, { replace: true });
     } catch (err) {
       // The code stays in the box on purpose. A wrong digit is the usual
       // cause, and clearing it would make the user retype all eight to fix
@@ -75,8 +86,9 @@ export function AdminLoginPage() {
       // Not reachable yet: nothing can enrol a passkey, so the server
       // always refuses above. When enrolment lands, the WebAuthn ceremony
       // goes here — navigator.credentials.get() with the challenge the
-      // route returns.
-      setStep("done");
+      // route returns — and then the same landing as the code path.
+      await refresh();
+      navigate(target, { replace: true });
     } catch (err) {
       // "Not enrolled." is the server's own wording, same as every other
       // message on this page.
@@ -93,36 +105,10 @@ export function AdminLoginPage() {
     setError(null);
   }
 
-  // Already signed in: show that rather than a sign-in form, which would
-  // otherwise invite someone to burn a fresh code for a session they
-  // already have.
-  if (!loading && user && step !== "done") {
-    return (
-      <div className="mx-auto max-w-md px-4 py-20 text-center">
-        <h1 className="flex items-center justify-center gap-2.5 text-2xl font-semibold text-ink">
-          <PersonMark className="h-6 w-6" />
-          Admin Sign-In
-        </h1>
-        <p className="mt-6 text-ink">
-          Signed in as <span className="font-medium">{user.username}</span>.
-        </p>
-        <p className="mt-3 text-sm text-muted">
-          The admin panel itself isn&apos;t built yet — this is as far as the door goes.
-        </p>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="mt-6 rounded-full bg-ink px-7 py-3 text-sm font-medium text-white hover:opacity-90"
-        >
-          Sign out
-        </button>
-        <p className="mt-8">
-          <Link to="/" className="text-sm text-brand hover:underline">
-            Back to homepage
-          </Link>
-        </p>
-      </div>
-    );
+  // Already signed in: straight through. `replace` so the back button
+  // doesn't bounce between here and the panel.
+  if (!loading && user) {
+    return <Navigate to={target} replace />;
   }
 
   return (
@@ -238,25 +224,6 @@ export function AdminLoginPage() {
             </button>
           </p>
         </>
-      )}
-
-      {step === "done" && (
-        <div className="mt-8 rounded-2xl border border-hairline bg-surface px-6 py-8 text-center">
-          <p className="font-medium text-ink">
-            Signed in{user ? <> as {user.username}</> : null}.
-          </p>
-          <p className="mt-3 text-sm text-muted">
-            The admin panel itself isn&apos;t built yet, so there&apos;s nowhere to go next —
-            but you&apos;ll stay signed in on this browser, and the header knows it.
-          </p>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="mt-5 text-sm text-brand hover:underline"
-          >
-            Sign out
-          </button>
-        </div>
       )}
 
       <p className="mt-8 text-center">

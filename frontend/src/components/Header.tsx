@@ -1,16 +1,43 @@
+import { type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { MissionMark } from "./MissionMark";
 import { PersonMark } from "./PersonMark";
 import { useAdminSession } from "../lib/useAdminSession";
 
+export type NavItem = {
+  to: string;
+  label: string;
+  icon?: ReactNode;
+  /** NavLink matches by prefix, so a link to "/" is "active" on every page
+   *  unless this is set. Only the admin nav's Home tab needs it. */
+  end?: boolean;
+};
+
+const SHOP_NAV: NavItem[] = [
+  { to: "/shop", label: "Shop" },
+  { to: "/services", label: "Services" },
+  { to: "/about", label: "About" },
+  { to: "/contact", label: "Contact" },
+  { to: "/help", label: "FAQ" },
+];
+
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  isActive ? "font-semibold text-ink" : "text-ink hover:text-brand";
+  [
+    "inline-flex items-center gap-1.5",
+    isActive ? "font-semibold text-ink" : "text-ink hover:text-brand",
+  ].join(" ");
 
 // Two rows: a thin utility bar, then the main row carrying the wordmark
 // and primary nav. Everything wraps rather than collapsing into a
 // hamburger, so every link stays reachable on a phone.
-export function Header() {
-  const { user, loading } = useAdminSession();
+//
+// The admin panel renders this same component with a different `nav`, so
+// both sides of the site share one header rather than two that look alike
+// until someone changes one. Everything else — the utility bar, the
+// wordmark, the grid trick that centres the nav — is identical by
+// construction, which is the point.
+export function Header({ nav = SHOP_NAV }: { nav?: NavItem[] }) {
+  const { user, loading, signOut } = useAdminSession();
 
   return (
     <header className="border-b border-hairline">
@@ -41,20 +68,23 @@ export function Header() {
                 "Nationwide" that went, which was enough when this span had
                 the right-hand side to itself; sharing the row with the admin
                 link, the whole tail has to go or the bar wraps. */}
-            <span className="whitespace-nowrap">
+            {/* Signed in, the city goes too on a phone. Adding "Sign out"
+                to this row is what tips it onto a second line, and between
+                a location and a control the admin actually uses, the
+                location is the one that can wait for a wider screen. */}
+            <span className={`whitespace-nowrap ${user ? "hidden sm:inline" : ""}`}>
               Gainesville, FL
               <span className="hidden sm:inline"> &amp; Nationwide Shipping</span>
             </span>
-            {/* Signed out: person icon + "Log in". Signed in: just the
-                greeting — the name is the affordance at that point, and the
-                icon alongside it only competes with it.
-                There's no auth yet; useAdminSession always reports signed
-                out, so today this always renders the first branch. */}
-            {/* Negative margin cancels the padding, so the hit area grows to ~26px
-                for the icon-only phone state without the link taking up any
-                more room in the row than its text does. */}
+
+            {/* Signed in, the greeting is the way into the panel. /login
+                would redirect there anyway, but going straight avoids the
+                visible hop.
+                Negative margin cancels the padding, so the hit area grows to
+                ~26px for the icon-only phone state without the link taking
+                up any more room in the row than its text does. */}
             <Link
-              to="/login"
+              to={user ? "/admin" : "/login"}
               className="-m-1.5 flex items-center gap-1.5 p-1.5 hover:text-brand"
             >
               {/* Nothing at all until the first /api/admin/me answers.
@@ -81,6 +111,20 @@ export function Header() {
                 </>
               )}
             </Link>
+
+            {/* Only once there's something to sign out of. It lives here
+                rather than inside the panel so it's reachable from the shop
+                too — you can end a session without first navigating back
+                into the admin side to find the button. */}
+            {user && (
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="-m-1.5 p-1.5 whitespace-nowrap hover:text-brand"
+              >
+                Sign out
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -110,21 +154,12 @@ export function Header() {
         </Link>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[15px]">
-          <NavLink to="/shop" className={navLinkClass}>
-            Shop
-          </NavLink>
-          <NavLink to="/services" className={navLinkClass}>
-            Services
-          </NavLink>
-          <NavLink to="/about" className={navLinkClass}>
-            About
-          </NavLink>
-          <NavLink to="/contact" className={navLinkClass}>
-            Contact
-          </NavLink>
-          <NavLink to="/help" className={navLinkClass}>
-            FAQ
-          </NavLink>
+          {nav.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.end} className={navLinkClass}>
+              {item.icon}
+              {item.label}
+            </NavLink>
+          ))}
         </nav>
 
         {/* Invisible twin of the logo block, purely to balance the grid —

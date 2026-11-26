@@ -1,80 +1,48 @@
-import { NavLink, Link, Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Header, type NavItem } from "./Header";
 import { HomeMark } from "./HomeMark";
-import { PersonMark } from "./PersonMark";
 import { useAdminSession } from "../lib/useAdminSession";
 
-// The admin panel's shell. Deliberately not the shop's Layout: no shop
-// header, no footer, no cream. White and plain, so there's never a moment
-// of doubt about which side of the site you're looking at.
+// The admin panel's shell. Same header as the shop — same utility bar, same
+// NexFix wordmark and logo, same centred nav — with the tabs swapped.
+// Sharing the component rather than copying its markup means the two can't
+// drift into looking almost-alike, and the grid trick that centres the nav
+// only has to be right in one place.
+//
+// No footer, and the content sits on white rather than the shop's cream, so
+// the chrome is familiar while the page underneath is clearly a different
+// part of the site.
 
-const tabs = [
+const ADMIN_NAV: NavItem[] = [
+  // `end` because NavLink matches by prefix: without it a link to "/" is
+  // "active" on every admin route, and Home would always look selected.
+  { to: "/", label: "Home", icon: <HomeMark className="h-4 w-4" />, end: true },
   { to: "/admin/list", label: "List" },
   { to: "/admin/codes", label: "Codes" },
   { to: "/admin/settings", label: "Settings" },
 ];
 
-const tabClass = ({ isActive }: { isActive: boolean }) =>
-  [
-    "rounded-full px-4 py-1.5 text-sm font-medium transition",
-    isActive ? "bg-ink text-white" : "text-ink hover:bg-black/5",
-  ].join(" ");
-
 export function AdminLayout() {
-  const { user, loading, signOut } = useAdminSession();
+  const { user, loading } = useAdminSession();
   const location = useLocation();
 
-  // Still asking the server. Render the frame but nothing inside it —
-  // flashing the panel and then bouncing to /login looks like a bug, and
-  // flashing /login for someone who is signed in is worse.
+  // Still asking the server. Render nothing rather than guessing — flashing
+  // the panel and then bouncing to /login looks like a bug, and flashing
+  // /login at someone who is signed in is worse.
   if (loading) {
     return <div className="min-h-screen bg-white" />;
   }
 
   if (!user) {
     // `replace` so the back button doesn't land on a panel you can't see,
-    // and `state` so signing in can return you to the page you wanted.
+    // and `state` so signing in returns you to the page you wanted rather
+    // than the panel's first tab.
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      <header className="border-b border-hairline">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
-          {/* Home leaves the panel entirely — it's a Link to the shop, not
-              an admin tab, so it deliberately doesn't take the active
-              treatment the others do. */}
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-sm font-medium text-ink hover:text-brand"
-          >
-            <HomeMark className="h-4 w-4" />
-            Home
-          </Link>
-
-          <nav className="flex flex-wrap items-center gap-1">
-            {tabs.map((tab) => (
-              <NavLink key={tab.to} to={tab.to} className={tabClass}>
-                {tab.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-3 text-xs text-muted">
-            <span className="flex items-center gap-1.5">
-              <PersonMark className="h-3.5 w-3.5" />
-              {user.username}
-            </span>
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              className="hover:text-brand"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
+      <Header nav={ADMIN_NAV} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10">
         <Outlet />
       </main>
