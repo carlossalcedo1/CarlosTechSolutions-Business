@@ -326,6 +326,8 @@ All server-side. None of these ever reach the browser.
 | `NOTIFY_EMAIL` | Where contact/trade-in form notifications land |
 | `SALE_NOTIFY_EMAIL` | Where "Sold: X" alerts land (falls back to `NOTIFY_EMAIL` if blank) — needs its own Cloudflare Email Routing rule to actually receive, same as `request@`/`inquiry@` |
 | `SITE_URL` | For Stripe redirect URLs and email links |
+| `PUSHOVER_TOKEN` | Optional — pushover.net → Create an Application. Blank = no push alerts |
+| `PUSHOVER_USER_KEY` | Optional — your user key on the pushover.net dashboard. Needs `PUSHOVER_TOKEN` set too; either one alone does nothing |
 
 ---
 

@@ -18,8 +18,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from .catalog import load_catalog
 from .codes import CodeStore, normalize_code
 from .config import Settings, get_settings
-from .emails import buyer_confirmation, sale_alert
+from .emails import buyer_confirmation, sale_alert, sale_push
 from .mailer import send_email
+from .notifier import send_push
 from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
 from .schemas import (
@@ -216,6 +217,24 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
             if settings.sale_notify_address:
                 subject, body_text = sale_alert(item, session, code=code)
                 send_email(settings, to=settings.sale_notify_address, subject=subject, text=body_text)
+
+            # Separate from the email on purpose: this is the one that gets
+            # your attention, the email is the one with the shipping address.
+            # Last in the handler, and send_push never raises, so a Pushover
+            # outage can't cost us the sale record or either email.
+            if settings.pushover_configured:
+                push_title, push_message, push_url = sale_push(item, session, code=code)
+                send_push(
+                    settings,
+                    title=push_title,
+                    message=push_message,
+                    url=push_url,
+                    url_title="Open payment in Stripe" if push_url else None,
+                    # High priority: cuts through the phone's quiet hours. A
+                    # sale that ships the same business day is worth a buzz
+                    # at 7am; see LAUNCH_CHECKLIST's shipping promise.
+                    priority=1,
+                )
 
     store.mark_processed(event["id"])
     return {"received": True}
