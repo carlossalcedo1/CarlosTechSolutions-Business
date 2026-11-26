@@ -11,7 +11,7 @@ const LAST_UPDATED = "September 11, 2026";
 const SECTIONS: Array<{ heading: string; body: ReactNode }> = [
   {
     heading: "Who we are",
-    body: "CarlosTechSolutions is run by Carlos Salcedo in Gainesville, FL. These terms apply when you buy from us, sell or trade in a device, or book an unlock or repair. By placing an order or sending us a device, you agree to them.",
+    body: "NexFix is run by Carlos Salcedo in Gainesville, FL. These terms apply when you buy from us, sell or trade in a device, or book an unlock or repair. By placing an order or sending us a device, you agree to them.",
   },
   {
     heading: "Listings and condition",

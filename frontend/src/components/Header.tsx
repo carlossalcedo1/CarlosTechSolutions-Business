@@ -49,16 +49,13 @@ export function Header() {
           the *row*, not just centered in whatever space is left over. */}
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-4 sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-x-8 sm:gap-y-3">
         <Link to="/" className="flex shrink-0 items-center gap-2">
-          {/* Temporary placeholder logo — reused from promptworks'
-              favicon.svg (its own logo mark is inline JSX, not a file, so
-              this is the one asset that existed to copy). Swap
-              /public/logo.svg for CarlosTechSolutions' own mark whenever
-              it's ready (see LAUNCH_CHECKLIST.md Phase 7: "Logo mark for
-              the reserved slot"). A few draft directions were tried and
-              parked — see /public/logo-draft*.svg — pending a mark to
-              draw up separately. */}
+          {/* The real mark at last: the NexFix N with the wrench knocked
+              out of its right stroke. Vector rather than a PNG on purpose —
+              this same file is the favicon, and a downscaled raster turns to
+              mush at 16px in a browser tab. The print masters, including the
+              full lockup for business cards, live in /brand. */}
           <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
-          <span className="text-lg font-bold tracking-tight text-ink">CarlosTechSolutions</span>
+          <span className="text-lg font-bold tracking-tight text-ink">NexFix</span>
         </Link>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[15px]">
@@ -85,7 +82,7 @@ export function Header() {
             would just steal space the nav needs to wrap into. */}
         <div aria-hidden className="hidden shrink-0 items-center gap-2 opacity-0 sm:flex">
           <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
-          <span className="text-lg font-bold tracking-tight">CarlosTechSolutions</span>
+          <span className="text-lg font-bold tracking-tight">NexFix</span>
         </div>
       </div>
     </header>

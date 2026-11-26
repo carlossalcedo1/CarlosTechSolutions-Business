@@ -50,10 +50,9 @@ export function Footer() {
         {/* Brand block */}
         <div>
           <Link to="/" className="flex items-center gap-3">
-            {/* Same placeholder as the header — see Header.tsx's comment.
-                Swap /public/logo.svg for the real mark when it's ready. */}
+            {/* Same mark as the header — see Header.tsx's comment. */}
             <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
-            <span className="text-xl font-bold tracking-tight text-ink">CarlosTechSolutions</span>
+            <span className="text-xl font-bold tracking-tight text-ink">NexFix</span>
           </Link>
 
           <p className="mt-5 max-w-xs text-[15px] leading-relaxed text-muted">
@@ -141,7 +140,7 @@ export function Footer() {
 
       <div className="border-t border-hairline">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-5 text-xs text-muted sm:flex-row sm:justify-between">
-          <p>&copy; {new Date().getFullYear()} CarlosTechSolutions. Ships nationwide.</p>
+          <p>&copy; {new Date().getFullYear()} NexFix. Ships nationwide.</p>
           <div className="flex gap-4">
             <Link to="/terms" className="hover:text-ink">
               Terms of service

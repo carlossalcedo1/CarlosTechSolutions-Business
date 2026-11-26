@@ -113,10 +113,8 @@ export function HomePage() {
           <h1 className="mt-8 text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink sm:mt-12">
             Your one stop shop for all your tech needs
           </h1>
-          {/* Placeholder description — rewrite this in your own voice. */}
           <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-muted sm:text-xl">
-            New, used, and refurbished phones, tablets, and computers — tested, unlocked,
-            and priced to move. We also buy, trade, and repair.
+            Tech Repair &amp; Resell, done right, fair, and fast!
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
