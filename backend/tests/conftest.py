@@ -54,6 +54,8 @@ def settings(tmp_path) -> Settings:
         sold_state_path=tmp_path / "sold_state.json",
         subscribers_path=tmp_path / "subscribers.json",
         codes_path=tmp_path / "codes.json",
+        login_codes_path=tmp_path / "login_codes.json",
+        admin_usernames="cmsal06",
     )
 
 
@@ -83,11 +85,19 @@ def _reset_rate_limiters():
     counters would leak between tests and the 6th test to send a form would
     start failing with a 429. Cleared before and after each test.
     """
-    main_module._form_limiter._hits.clear()
-    main_module._code_limiter._hits.clear()
+    for limiter in (
+        main_module._form_limiter,
+        main_module._code_limiter,
+        main_module._admin_limiter,
+    ):
+        limiter._hits.clear()
     yield
-    main_module._form_limiter._hits.clear()
-    main_module._code_limiter._hits.clear()
+    for limiter in (
+        main_module._form_limiter,
+        main_module._code_limiter,
+        main_module._admin_limiter,
+    ):
+        limiter._hits.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -108,8 +118,14 @@ def sent(monkeypatch) -> dict[str, list]:
     def fake_send_push(settings, **kwargs):
         captured["pushes"].append(kwargs)
 
+    def fake_send_push_strict(settings, **kwargs):
+        # Captured into the same list as the quiet one: tests care about
+        # what the app tried to push, not which door it went out of.
+        captured["pushes"].append(kwargs)
+
     monkeypatch.setattr(main_module, "send_email", fake_send_email)
     monkeypatch.setattr(main_module, "send_push", fake_send_push)
+    monkeypatch.setattr(main_module, "send_push_strict", fake_send_push_strict)
     return captured
 
 

@@ -20,10 +20,13 @@ from .codes import CodeStore, normalize_code
 from .config import Settings, get_settings
 from .emails import buyer_confirmation, sale_alert, sale_push
 from .mailer import send_email
-from .notifier import send_push
+from .login_codes import LoginCodeStore, normalize_username
+from .notifier import PushError, send_push, send_push_strict
 from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
 from .schemas import (
+    AdminLoginRequest,
+    AdminVerifyRequest,
     CheckoutRequest,
     CheckoutResponse,
     CodeLookupResponse,
@@ -48,6 +51,14 @@ _form_limiter = RateLimiter(max_requests=5, window_seconds=60)
 # codes before they expire.
 _code_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
+# Admin sign-in, deliberately the tightest budget in the file. It guards two
+# different things at once: the login route answers whether a username is an
+# admin, so an open budget there is a free list of who to target; and the
+# verify route is the only thing between a guesser and an 8-digit code. Five
+# a minute is unmissable for a real person typing a code off their phone and
+# nowhere near enough to sweep anything.
+_admin_limiter = RateLimiter(max_requests=5, window_seconds=60)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -59,6 +70,7 @@ async def lifespan(app: FastAPI):
     app.state.catalog = {item.id: item for item in items}
     app.state.sold_store = SoldStore(settings.sold_state_path)
     app.state.code_store = CodeStore(settings.codes_path)
+    app.state.login_code_store = LoginCodeStore(settings.login_codes_path)
     logger.info("Loaded %d catalog items", len(items))
     yield
 
@@ -310,6 +322,79 @@ def trade_in(body: TradeInRequest, request: Request, settings: Settings = Depend
             html="<p>" + "</p><p>".join(lines) + "</p>",
             reply_to=body.email,
         )
+    return OkResponse()
+
+
+@app.post("/api/admin/login", response_model=OkResponse)
+def admin_login(
+    body: AdminLoginRequest, request: Request, settings: Settings = Depends(get_settings)
+):
+    """Step one of admin sign-in: push a one-time code to the admin's phone.
+
+    This route tells an anonymous caller whether a username is an admin,
+    which is a deliberate choice and not an oversight — it's what makes the
+    form usable, and the set of names is small and private. _admin_limiter
+    is what keeps that from being an enumerable list.
+    """
+    _admin_limiter.check(client_ip(request))
+
+    username = normalize_username(body.username)
+    # Raises on a malformed ADMIN_USERNAMES rather than admitting the wrong
+    # person — see Settings.admin_allowlist. A 500 here means the env is
+    # broken, which is the operator's problem and not the caller's.
+    try:
+        allowlist = settings.admin_allowlist
+    except ValueError:
+        logger.exception("ADMIN_USERNAMES is malformed — refusing all admin logins")
+        raise HTTPException(status_code=500, detail="Admin sign-in is misconfigured.")
+
+    if username not in allowlist:
+        raise HTTPException(status_code=400, detail="Username has not been registered.")
+
+    code = request.app.state.login_code_store.issue(username)
+
+    # send_push_strict, not send_push: the quiet one would let this return
+    # "sent" for a code that never left the building, and the whole point of
+    # the screen the user is looking at is that a code is on its way.
+    try:
+        send_push_strict(
+            settings,
+            title="NexFix admin sign-in",
+            message=f"Your sign-in code is {code}. It expires in 10 minutes.",
+            # High priority: you are standing at a keyboard waiting for it,
+            # so this is the one push in the app that should ignore a quiet
+            # hours schedule.
+            priority=1,
+            user_key=allowlist[username] or None,
+        )
+    except PushError:
+        logger.exception("Could not push a sign-in code for %s", username)
+        raise HTTPException(
+            status_code=503,
+            detail="Couldn't send the code right now. Try again in a moment.",
+        )
+
+    return OkResponse()
+
+
+@app.post("/api/admin/verify", response_model=OkResponse)
+def admin_verify(body: AdminVerifyRequest, request: Request):
+    """Step two: trade the pushed code for... nothing, yet.
+
+    The code is checked and burned here, correctly. What's missing is the
+    session that should come back with a success — there's no admin panel
+    to hold one open yet, so issuing a token now would mean designing its
+    lifetime, storage and revocation against no actual use. Returning a
+    bare ok keeps the code half honest and leaves that decision where it
+    belongs, with the panel.
+    """
+    _admin_limiter.check(client_ip(request))
+
+    if not request.app.state.login_code_store.verify(body.username, body.code):
+        # One message for wrong, expired, already-used and too-many-tries.
+        # Telling them which would hand a guesser a progress bar.
+        raise HTTPException(status_code=400, detail="That code isn't valid. Request a new one.")
+
     return OkResponse()
 
 

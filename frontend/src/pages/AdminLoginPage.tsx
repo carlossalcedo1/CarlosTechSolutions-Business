@@ -1,45 +1,66 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { requestAdminLoginCode, ApiError } from "../lib/api";
+import { requestAdminLoginCode, verifyAdminLoginCode, ApiError } from "../lib/api";
 import { PersonMark } from "../components/PersonMark";
+import { CODE_LENGTH } from "../lib/adminLogin";
 
-// Step one of admin sign-in: hand over a username, get a code pushed to the
-// phone that username belongs to.
+// Admin sign-in, in two steps: a username gets an 8-digit code pushed to
+// the phone registered to it, then that code gets typed back here.
 //
-// Only step one. Entering the code and actually becoming signed in needs
-// somewhere to store issued codes, which is coming over from PromptWorks —
-// so the "check your phone" state below is currently the end of the road,
-// and says so rather than pointing at a code box that isn't there.
+// A verified code doesn't sign anyone in yet. The backend burns it and
+// returns a bare ok — there's no admin panel to hold a session open, so
+// issuing a token now would mean designing its lifetime and revocation
+// against nothing. The confirmed state below says so rather than dropping
+// the user somewhere that looks signed in and isn't.
 //
-// The backend route doesn't exist yet either; see requestAdminLoginCode in
-// lib/api.ts for the contract it has to meet, including the two Pushover
-// gotchas. Until it does, submitting gets "Couldn't reach the server" from
-// the api client, which is the honest answer and not something worth faking
-// a success for.
+// Every error message shown here comes from the server's own `detail`, so
+// the wording lives in backend/app/main.py. Nothing on this page decides
+// what a failure says.
 export function AdminLoginPage() {
   const [username, setUsername] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"username" | "code" | "done">("username");
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
+  async function sendCode(e: FormEvent) {
     e.preventDefault();
-    if (sending) return;
+    if (busy) return;
     setError(null);
-    setSending(true);
+    setBusy(true);
     try {
       await requestAdminLoginCode(username.trim());
-      setSentTo(username.trim());
+      setStep("code");
     } catch (err) {
-      // The not-on-the-allowlist case ("Username has not been registered.")
-      // arrives as the server's own detail string, so it needs no handling
-      // of its own here — it just gets shown.
-      setError(
-        err instanceof ApiError ? err.message : "Something went wrong — try again in a moment.",
-      );
+      setError(messageFor(err));
     } finally {
-      setSending(false);
+      setBusy(false);
     }
+  }
+
+  async function submitCode(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await verifyAdminLoginCode(username.trim(), code);
+      setStep("done");
+    } catch (err) {
+      // The code stays in the box on purpose. A wrong digit is the usual
+      // cause, and clearing it would make the user retype all eight to fix
+      // one — while spending another of the five attempts to find out.
+      setError(messageFor(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function startOver() {
+    setStep("username");
+    setUsername("");
+    setCode("");
+    setError(null);
   }
 
   return (
@@ -49,37 +70,13 @@ export function AdminLoginPage() {
         Admin Sign-In
       </h1>
 
-      {sentTo ? (
-        <div className="mt-8 rounded-2xl border border-hairline bg-surface px-6 py-8 text-center">
-          <p className="text-ink">
-            A confirmation code has been pushed to the phone registered to{" "}
-            {/* break-words, not break-all: a long name still has to wrap
-                rather than overflow the card, but break-all splits a normal
-                one mid-word even when it would have fitted. */}
-            <span className="font-medium break-words">{sentTo}</span>.
-          </p>
-          <p className="mt-3 text-sm text-muted">
-            Entering the code isn&apos;t wired up yet — that part lands with the admin panel
-            itself.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setSentTo(null);
-              setUsername("");
-            }}
-            className="mt-5 text-sm text-brand hover:underline"
-          >
-            Use a different username
-          </button>
-        </div>
-      ) : (
+      {step === "username" && (
         <>
           <p className="mt-3 text-center text-muted">
             Enter your admin username and we&apos;ll push a confirmation code to your phone.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+          <form onSubmit={sendCode} className="mt-8 space-y-4">
             <div>
               <label htmlFor="admin-username" className="text-sm text-muted">
                 Username
@@ -101,27 +98,85 @@ export function AdminLoginPage() {
               />
             </div>
 
-            {/* role=alert so the rejection is announced rather than silently
-                appearing — this is the one piece of feedback the whole page
-                exists to deliver. */}
-            {error && (
-              <p
-                role="alert"
-                className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-              >
-                {error}
-              </p>
-            )}
+            <ErrorNote error={error} />
 
             <button
               type="submit"
-              disabled={sending || !username.trim()}
+              disabled={busy || !username.trim()}
               className="w-full rounded-full bg-brand px-7 py-3 text-sm font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {sending ? "Sending…" : "Send confirmation code"}
+              {busy ? "Sending…" : "Send confirmation code"}
             </button>
           </form>
         </>
+      )}
+
+      {step === "code" && (
+        <>
+          <p className="mt-3 text-center text-muted">
+            We pushed an {CODE_LENGTH}-digit code to the phone registered to{" "}
+            <span className="font-medium break-words text-ink">{username.trim()}</span>. It
+            expires in 10 minutes.
+          </p>
+
+          <form onSubmit={submitCode} className="mt-8 space-y-4">
+            <div>
+              <label htmlFor="admin-code" className="text-sm text-muted">
+                Confirmation code
+              </label>
+              <input
+                id="admin-code"
+                // inputMode numeric, not type="number": a number input brings
+                // spinners, accepts "1e5", and silently drops leading zeros —
+                // and a code can start with one.
+                type="text"
+                inputMode="numeric"
+                pattern="\d*"
+                required
+                autoFocus
+                autoComplete="one-time-code"
+                maxLength={CODE_LENGTH}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                placeholder={"0".repeat(CODE_LENGTH)}
+                className="mt-1 w-full rounded border border-hairline px-3 py-2 text-center font-mono text-lg tracking-[0.35em] outline-none focus:border-brand"
+              />
+            </div>
+
+            <ErrorNote error={error} />
+
+            <button
+              type="submit"
+              disabled={busy || code.length !== CODE_LENGTH}
+              className="w-full rounded-full bg-brand px-7 py-3 text-sm font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {busy ? "Checking…" : "Confirm"}
+            </button>
+          </form>
+
+          <p className="mt-5 text-center">
+            <button type="button" onClick={startOver} className="text-sm text-brand hover:underline">
+              Start over
+            </button>
+          </p>
+        </>
+      )}
+
+      {step === "done" && (
+        <div className="mt-8 rounded-2xl border border-hairline bg-surface px-6 py-8 text-center">
+          <p className="font-medium text-ink">Code confirmed.</p>
+          <p className="mt-3 text-sm text-muted">
+            You&apos;re not signed in yet — there&apos;s no admin panel to sign in to. That
+            lands with the panel itself, and this page will carry you into it when it does.
+          </p>
+          <button
+            type="button"
+            onClick={startOver}
+            className="mt-5 text-sm text-brand hover:underline"
+          >
+            Start over
+          </button>
+        </div>
       )}
 
       <p className="mt-8 text-center">
@@ -130,5 +185,25 @@ export function AdminLoginPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+function messageFor(err: unknown): string {
+  return err instanceof ApiError
+    ? err.message
+    : "Something went wrong — try again in a moment.";
+}
+
+// role=alert so a rejection is announced rather than silently appearing;
+// on this page the error is the entire feedback channel.
+function ErrorNote({ error }: { error: string | null }) {
+  if (!error) return null;
+  return (
+    <p
+      role="alert"
+      className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+    >
+      {error}
+    </p>
   );
 }

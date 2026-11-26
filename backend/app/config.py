@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     # Code-only listings (app/codes.py) — same volume, so codes survive a
     # redeploy and gen_code.py can write them without one.
     codes_path: Path = _DEFAULT_DATA_DIR / "codes.json"
+    # Live admin sign-in codes (app/login_codes.py). Same volume so a
+    # redeploy mid-login doesn't strand someone holding a valid code.
+    login_codes_path: Path = _DEFAULT_DATA_DIR / "login_codes.json"
 
     @property
     def sender_address(self) -> str:

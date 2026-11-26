@@ -10,6 +10,23 @@ from __future__ import annotations
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from .codes import CodeItem
+from .login_codes import CODE_LENGTH
+
+
+class AdminLoginRequest(BaseModel):
+    """Step one: who's asking. Nothing is revealed about the username here
+    beyond what the route's own error says."""
+
+    username: str = Field(min_length=1, max_length=64)
+
+
+class AdminVerifyRequest(BaseModel):
+    """Step two: the code that was pushed. Length is pinned to the 8 digits
+    login_codes.py generates, so a wrong-shaped guess is rejected by
+    validation before it costs a PBKDF2 round."""
+
+    username: str = Field(min_length=1, max_length=64)
+    code: str = Field(min_length=CODE_LENGTH, max_length=CODE_LENGTH, pattern=r"^\d+$")
 
 
 class CheckoutRequest(BaseModel):
