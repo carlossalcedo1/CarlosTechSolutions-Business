@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { CleanWayMark } from "../components/CleanWayMark";
+import { MissionMark } from "../components/MissionMark";
 import { LockScreenMockups } from "../components/LockScreenMockups";
 import { ProjectsSection } from "../components/ProjectsSection";
 
@@ -27,10 +27,10 @@ export function AboutPage() {
           </div>
         </div>
 
-        <section id="clean-way" className="mt-10 scroll-mt-24 border-t border-hairline pt-8">
+        <section id="our-mission" className="mt-10 scroll-mt-24 border-t border-hairline pt-8">
           <h2 className="flex items-center gap-2.5 text-xl font-semibold text-ink">
-            <CleanWayMark className="h-5 w-5" />
-            The Clean Way
+            <MissionMark className="h-5 w-5" />
+            Our Mission
           </h2>
           <p className="mt-3 text-ink">
             Every device has a story before it reaches you. Some come from people who no longer need

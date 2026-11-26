@@ -55,7 +55,7 @@ export const articles: Article[] = [
     slug: "unlocking-legality",
     category: "Device unlocking",
     tags: ["unlocking", "icloud", "mdm"],
-    body: "Yes. We verify ownership before unlocking any iCloud- or MDM-locked device — see The Clean Way on our About page.",
+    body: "Yes. We verify ownership before unlocking any iCloud- or MDM-locked device — see Our Mission on our About page.",
   },
   {
     title: "What does 'factory unlocked' mean?",

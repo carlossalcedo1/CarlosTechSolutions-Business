@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { CleanWayMark } from "./CleanWayMark";
+import { MissionMark } from "./MissionMark";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "font-semibold text-ink" : "text-ink hover:text-brand";
@@ -17,9 +17,9 @@ export function Header() {
       <div className="border-b border-hairline bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-muted">
           <div className="flex items-center gap-4">
-            <Link to="/about#clean-way" className="flex items-center gap-1.5 hover:text-brand">
-              <CleanWayMark className="h-3.5 w-3.5" />
-              The Clean Way
+            <Link to="/about#our-mission" className="flex items-center gap-1.5 hover:text-brand">
+              <MissionMark className="h-3.5 w-3.5" />
+              Our Mission
             </Link>
             <Link to="/help" className="hover:text-brand">
               <span className="sm:hidden">Help?</span>

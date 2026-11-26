@@ -7,7 +7,7 @@ import {
   FACEBOOK_MARKETPLACE_URL,
 } from "../lib/constants";
 import { PhotoCarousel } from "../components/PhotoCarousel";
-import { CleanWayMark } from "../components/CleanWayMark";
+import { MissionMark } from "../components/MissionMark";
 import { ProjectsSection } from "../components/ProjectsSection";
 import { OtherMarketplaces } from "../components/OtherMarketplaces";
 
@@ -254,13 +254,13 @@ export function HomePage() {
           the Services page via ProjectsSection. */}
       <ProjectsSection id="projects" />
 
-      {/* The Clean Way — full-bleed dark section, centered */}
+      {/* Our Mission — full-bleed dark section, centered */}
       <section className="bg-night text-white">
         <div className="mx-auto max-w-3xl px-6 py-24 text-center">
           <p className={`${eyebrow} text-white/50`}>How we source</p>
           <h2 className={`${sectionHeading} mt-4 flex items-center justify-center gap-3`}>
-            <CleanWayMark className="h-[0.85em] w-[0.85em]" />
-            The Clean Way
+            <MissionMark className="h-[0.85em] w-[0.85em]" />
+            Our Mission
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
             Devices sourced from people who no longer need them, plus iCloud/MDM-locked units
@@ -268,7 +268,7 @@ export function HomePage() {
             and test every one before it&apos;s listed.
           </p>
           <Link
-            to="/about#clean-way"
+            to="/about#our-mission"
             className="mt-9 inline-block rounded-full bg-white px-7 py-3 text-[15px] font-medium text-night hover:opacity-90"
           >
             Learn about our process

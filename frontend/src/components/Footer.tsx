@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
 import { INQUIRY_EMAIL, CONTACT_PHONE, EBAY_PROFILE_URL } from "../lib/constants";
-import { CleanWayMark } from "./CleanWayMark";
+import { MissionMark } from "./MissionMark";
 
 type FooterLink = {
   label: string;
   to: string;
-  /** Renders the leaf mark before the label (used for The Clean Way). */
+  /** Renders the leaf mark before the label (used for Our Mission). */
   mark?: boolean;
 };
 
@@ -36,7 +36,7 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
     heading: "Company",
     links: [
       { label: "About us", to: "/about" },
-      { label: "The Clean Way", to: "/about#clean-way", mark: true },
+      { label: "Our Mission", to: "/about#our-mission", mark: true },
       { label: "Help center", to: "/help" },
       { label: "Contact", to: "/contact" },
     ],
@@ -128,7 +128,7 @@ export function Footer() {
               {column.links.map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="inline-flex items-center gap-1.5 hover:text-ink">
-                    {link.mark && <CleanWayMark className="h-4 w-4" />}
+                    {link.mark && <MissionMark className="h-4 w-4" />}
                     {link.label}
                   </Link>
                 </li>
