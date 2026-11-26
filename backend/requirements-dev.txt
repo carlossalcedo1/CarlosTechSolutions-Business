@@ -1,0 +1,15 @@
+# Test-only dependencies. Deliberately NOT in requirements.txt: backend/
+# Dockerfile installs that file, and the runtime image has no business
+# carrying a test runner.
+#
+#   python3 -m venv .venv && . .venv/bin/activate
+#   pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+#   pytest
+
+-r requirements.txt
+
+pytest>=8.3
+# TestClient's transport, and not a runtime dep. Newer starlette prefers
+# httpx2 and deprecation-warns on this one (see pytest.ini's filterwarnings
+# carve-out); httpx works fine today, so this is a swap for later.
+httpx>=0.27

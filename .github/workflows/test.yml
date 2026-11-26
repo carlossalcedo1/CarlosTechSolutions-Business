@@ -1,0 +1,55 @@
+# Runs the same two gates deploy.sh runs, but on every PR — so a problem
+# shows up before merge rather than when you're standing at the NUC trying
+# to ship.
+#
+# Python is pinned to 3.12 to match backend/Dockerfile's base image. The
+# tests pass on newer Pythons too, but CI should fail where production
+# fails, not somewhere adjacent.
+
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements-dev.txt
+
+      - name: Run tests
+        run: pytest
+
+  frontend:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      # `npm run build` is `tsc -b && vite build`, so this is the type check
+      # as well as the build. prebuild creates an empty scripts/items.json,
+      # since inventory is gitignored and never in a clean checkout.
+      - name: Build
+        run: npm run build
+        working-directory: frontend
