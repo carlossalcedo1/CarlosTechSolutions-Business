@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import {
   CATEGORIES,
   CONTACT_PHONE,
+  CONTACT_PHONE_E164,
   EBAY_PROFILE_URL,
   FACEBOOK_MARKETPLACE_URL,
 } from "../lib/constants";
@@ -65,19 +66,38 @@ export function HomePage() {
               actually move anything) plus the h1's mt-8/mt-12 below give a
               controlled 1:2 split of the header-to-headline gap: roughly a
               third above this callout, two-thirds between it and the h1. */}
-          <a
-            href="#projects"
-            className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs text-ink transition hover:border-ink"
-          >
-            <span className="font-bold">Looking for these?</span> PromptWorks &middot; RhinoTrade
-            <span aria-hidden>&rarr;</span>
-          </a>
-          <p className="mt-4 text-xs text-red-600">
-            *Inventory may not be up to date, for latest offerings contact me directly at{" "}
-            <a href={`tel:${CONTACT_PHONE}`} className="font-medium whitespace-nowrap underline">
-              {CONTACT_PHONE}
+          {/* Both pills on one row. The contact one used to be a tel: anchor
+              nested inside an outer anchor, which isn't legal HTML — browsers
+              split it into two sibling links, so the outer pill and the number
+              went to different places. It's a single <a> now. */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <a
+              href="#projects"
+              className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs text-ink transition hover:border-ink"
+            >
+              <span className="font-bold">Looking for these?</span> PromptWorks &middot; RhinoTrade
+              <span aria-hidden>&rarr;</span>
             </a>
-          </p>
+
+            <a
+              href={`sms:${CONTACT_PHONE_E164}`}
+              className="group inline-flex flex-wrap items-center justify-center rounded-full border border-brand-bright bg-white px-4 py-1.5 text-xs text-brand transition hover:border-brand hover:bg-brand/5 sm:flex-nowrap"
+            >
+              <span className="font-bold">Contact me directly for latest offerings</span>
+              {/* The number unfurls on hover. Its left padding lives inside the
+                  clipped box rather than as a flex gap, so there's no ghost
+                  space sitting there while it's collapsed.
+                  The clipping is sm-and-up only. Phones have no hover, so the
+                  number has to be visible there anyway — and leaving
+                  overflow-hidden on at that width cropped it to "(305) 763-25"
+                  once the label wrapped and ate the room. Below sm the pill
+                  wraps instead and the number sits on its own line. */}
+              <span className="pl-1.5 font-medium whitespace-nowrap transition-all duration-300 sm:max-w-0 sm:overflow-hidden sm:pl-0 sm:group-hover:max-w-[11rem] sm:group-hover:pl-1.5">
+                {CONTACT_PHONE}
+              </span>
+            </a>
+          </div>
+
           <h1 className="mt-8 text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink sm:mt-12">
             Your one stop shop for all your tech needs
           </h1>

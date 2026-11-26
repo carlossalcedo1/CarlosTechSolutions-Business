@@ -15,6 +15,10 @@ export const REQUEST_EMAIL = "request@carlostechsolutions.com";
 /** Someone wants to KNOW something: availability, pricing, general questions. */
 export const INQUIRY_EMAIL = "inquiry@carlostechsolutions.com";
 export const CONTACT_PHONE = "(305) 763-2541";
+/** The same number in E.164, for tel: and sms: hrefs. Most dialers cope with
+ *  the formatted version above, but sms: is the fussier of the two and some
+ *  Android handsets just drop a href they can't parse. */
+export const CONTACT_PHONE_E164 = "+13057632541";
 
 // Same profile linked from promptworks/frontend's footer (data/people.js) —
 // kept as one source here too so it's not hand-typed twice across repos.
