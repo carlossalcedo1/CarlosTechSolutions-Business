@@ -9,6 +9,9 @@ strings out — so they can be previewed or tested without Stripe or Resend.
   render) plus a hand-written plain-text version.
 - `sale_alert`: the "Sold" alert to you. Admin-only, so plain text and
   descriptive rather than pretty — everything needed to ship the order.
+- `sale_push`: the same sale, cut down to a lock-screen glance for Pushover
+  (app/notifier.py). Lives here and not in notifier.py so all the
+  Stripe-session shape knowledge stays in one file.
 """
 
 from __future__ import annotations
@@ -29,6 +32,16 @@ def format_cents(cents: int) -> str:
     rule, plus thousands separators."""
     dollars = cents / 100
     return f"${dollars:,.0f}" if cents % 100 == 0 else f"${dollars:,.2f}"
+
+
+def _shipping_details(session: dict) -> dict:
+    """Newer Stripe API versions moved shipping under collected_information;
+    check both so an account API-version bump doesn't blank the address."""
+    return (
+        session.get("shipping_details")
+        or (session.get("collected_information") or {}).get("shipping_details")
+        or {}
+    )
 
 
 def buyer_confirmation(item: Item | CodeItem, *, amount_paid_cents: int, site_url: str) -> tuple[str, str, str]:
@@ -115,13 +128,7 @@ def sale_alert(item: Item | CodeItem, session: dict, *, code: str | None = None)
     dict (main.py converts it with .to_dict()). `code` is set for a
     code-only listing (app/codes.py)."""
     customer = session.get("customer_details") or {}
-    # Newer Stripe API versions moved shipping under collected_information;
-    # check both so an account API-version bump doesn't blank this section.
-    shipping = (
-        session.get("shipping_details")
-        or (session.get("collected_information") or {}).get("shipping_details")
-        or {}
-    )
+    shipping = _shipping_details(session)
     address = shipping.get("address") or {}
 
     paid = format_cents(session.get("amount_total") or item.priceCents)
@@ -174,3 +181,45 @@ def sale_alert(item: Item | CodeItem, session: dict, *, code: str | None = None)
 
     code_note = f" (code {code})" if code else ""
     return f"Sold: {item.name} for {paid}{code_note}", "\n".join(lines)
+
+
+def sale_push(
+    item: Item | CodeItem, session: dict, *, code: str | None = None
+) -> tuple[str, str, str | None]:
+    """Returns (title, message, url) for the Pushover alert — see notifier.py.
+    `code` is set for a code-only listing, same as `sale_alert`.
+
+    Deliberately not the email's contents. This is what's worth reading on a
+    lock screen standing in a doorway: what sold, for how much, who to, and
+    the inventory number you'd use to find the device. The email has the full
+    shipping address and the rest of what packing an order actually needs.
+
+    Unlike `sale_alert` this *does* carry a Stripe dashboard link. The reason
+    that link left the email — an unfamiliar domain mailing a financial-
+    platform URL next to dollar amounts is the exact shape spam filters look
+    for — has no equivalent in a push, and the payment is the one thing you'd
+    want to open next.
+    """
+    paid = format_cents(session.get("amount_total") or item.priceCents)
+    customer = session.get("customer_details") or {}
+    address = _shipping_details(session).get("address") or {}
+
+    buyer = customer.get("name") or customer.get("email") or "(not given)"
+    where = ", ".join(p for p in [address.get("city"), address.get("state")] if p)
+
+    lines = [
+        f"{paid} · {item.condition.value}",
+        f"Buyer: {buyer}",
+        f"Inventory: {item.inventoryId}",
+    ]
+    if code:
+        # A code sale never appeared on the shop, so say so — otherwise I'd
+        # go looking for it in the catalog and not find it.
+        lines.append(f"Code: {code}")
+    if where:
+        lines.append(f"Ship to: {where}")
+
+    payment_intent = session.get("payment_intent")
+    url = f"https://dashboard.stripe.com/payments/{payment_intent}" if payment_intent else None
+
+    return f"Sold: {item.name}", "\n".join(lines), url

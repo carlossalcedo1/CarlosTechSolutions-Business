@@ -43,6 +43,15 @@ class Settings(BaseSettings):
     # opt-in to override rather than a required addition.
     from_email: str = ""
 
+    # Pushover — push alerts to your own phone (app/notifier.py). Operator
+    # only: these two values are *your* account, so this is never a channel
+    # for customers. Both blank means no pushes, the same way a missing
+    # Resend key means no email.
+    #   PUSHOVER_TOKEN     pushover.net -> Create an Application
+    #   PUSHOVER_USER_KEY  shown on the pushover.net dashboard when logged in
+    pushover_token: str = ""
+    pushover_user_key: str = ""
+
     sold_state_path: Path = _DEFAULT_DATA_DIR / "sold_state.json"
     subscribers_path: Path = _DEFAULT_DATA_DIR / "subscribers.json"
     # Code-only listings (app/codes.py) — same volume, so codes survive a
@@ -62,6 +71,13 @@ class Settings(BaseSettings):
     @property
     def sale_notify_address(self) -> str:
         return self.sale_notify_email or self.notify_email
+
+    @property
+    def pushover_configured(self) -> bool:
+        """Both halves or nothing — a token with no user key (or the other
+        way round) can't send, so treat a half-filled pair as "off" rather
+        than letting notifier.py log a warning on every sale."""
+        return bool(self.pushover_token and self.pushover_user_key)
 
 
 @lru_cache
