@@ -126,27 +126,41 @@ export function subscribe(email: string) {
 }
 
 /**
- * Step one of admin sign-in: ask the backend to email a confirmation code.
+ * Step one of admin sign-in: ask the backend to send a confirmation code.
  *
  * THE ENDPOINT DOESN'T EXIST YET. The UI is built against this contract so
  * that standing the route up is the only thing left to do:
  *
- *   POST /api/admin/login   { "email": "someone@example.com" }
+ *   POST /api/admin/login   { "username": "carlos" }
  *     200  { "ok": true }                     code sent, show the "check your
- *                                             inbox" state
+ *                                             phone" state
  *     4xx  { "detail": "<message>" }          shown to the user verbatim
  *
- * For an address that isn't on the allowlist, `detail` must be exactly
- * "Email has not been registered." — `post()` above surfaces FastAPI's
+ * For a username that isn't on the allowlist, `detail` must be exactly
+ * "Username has not been registered." — `post()` above surfaces FastAPI's
  * `detail` string as the ApiError message, so whatever the server says is
  * what the user reads, and the page doesn't special-case it.
  *
- * Worth knowing when you build it: answering "registered" vs "not registered"
- * tells anyone who asks which addresses are admins. That's the behaviour that
- * was asked for and it's fine for a private panel, but it's the reason this
- * route wants a tight per-IP rate limit (app/ratelimit.py) — otherwise it's
- * an address oracle anyone can enumerate.
+ * Delivery is Pushover, not email: app/notifier.py's send_push already does
+ * the whole job in one stdlib POST. Two things to watch when wiring it up,
+ * though, because neither is obvious:
+ *
+ *   - send_push targets settings.pushover_user_key, which is a single fixed
+ *     key — the owner's. That's fine while one person signs in. For a second
+ *     admin the allowlist has to map username -> that admin's own user key,
+ *     because Pushover addresses a device, not a name this app made up.
+ *   - send_push logs failures and returns instead of raising. That's correct
+ *     where it's used now (inside the Stripe webhook, where raising would
+ *     make Stripe retry a handled sale) and wrong here: a swallowed failure
+ *     would show "code sent" for a code that was never delivered. This route
+ *     needs to know whether delivery actually happened, so it wants a
+ *     variant that raises, or a return value it can check.
+ *
+ * Worth deciding too: answering "registered" vs "not registered" tells anyone
+ * who asks which usernames are admins. Less leaky than it was with email
+ * addresses, but it's still the reason this route wants a tight per-IP rate
+ * limit (app/ratelimit.py).
  */
-export function requestAdminLoginCode(email: string) {
-  return post<{ ok: boolean }>("/admin/login", { email });
+export function requestAdminLoginCode(username: string) {
+  return post<{ ok: boolean }>("/admin/login", { username });
 }
