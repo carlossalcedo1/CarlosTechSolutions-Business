@@ -12,7 +12,6 @@ so a mistyped price or category fails here rather than on the live site.
 from __future__ import annotations
 
 import datetime as dt
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -23,44 +22,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from pydantic import ValidationError
 
 from app.catalog import CATALOG_PATH, load_catalog, save_catalog
+from app.inventory import (
+    DEPLOY_SCRIPT,
+    IMAGE_SUFFIXES,
+    PUBLIC_ITEMS_DIR,
+    REPO_ROOT,
+    STANDARD_DESCRIPTION,
+    build_name,
+    open_pillow,
+    parse_price_cents,
+    parse_quantity,
+    save_as_jpeg,
+    slugify,
+)
 from app.models import Category, Condition, Item
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_ITEMS_DIR = REPO_ROOT / "frontend" / "public" / "items"
-DEPLOY_SCRIPT = REPO_ROOT / "deploy" / "deploy.sh"
 
 # All device photos live under one folder on the computer used to add
 # inventory (see docs/ADDING_INVENTORY.md) — each item's photos in their own
 # subfolder, e.g. ~/catalog/iphone-13-128gb/.
 PHOTOS_BASE_DIR = Path.home() / "catalog"
 
-# Every item ships the same boilerplate paragraph. Specific caveats belong in
-# the spec bullets ("unless explicitly stated above" is what points a reader
-# back up at them), not in a per-item free-text field.
-STANDARD_DESCRIPTION = (
-    "All functions have been tested and function without issue unless "
-    "explicitly stated above. View our return policy before purchase."
-)
-
-# Phone photos are 3-5MB each. Git never forgets a large file, so they get
-# resized on the way in — a repo you can't shrink later is the expensive
-# mistake here, and 1600px is plenty for a product page.
-MAX_WIDTH = 1600
-JPEG_QUALITY = 82
-
-# Anything Pillow can open, including HEIC once pillow-heif registers itself.
-# Whatever goes in, JPEG comes out — browsers don't display HEIC, so the
-# format question only matters on the way in.
-IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".tif", ".tiff", ".bmp", ".gif"}
-
-
 class PhotoCopyError(Exception):
     """Every photo in the chosen folder failed to process."""
-
-
-def slugify(text: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return re.sub(r"-{2,}", "-", slug)
 
 
 def ask(prompt: str, *, default: str | None = None, allow_empty: bool = False) -> str:
@@ -96,16 +79,10 @@ def ask_bool(prompt: str, *, default: bool) -> bool:
 def ask_price_cents() -> int:
     """Accepts '289' or '289.99' and stores integer cents."""
     while True:
-        raw = ask("Price (e.g. 289 or 289.99)").lstrip("$").replace(",", "")
         try:
-            cents = int(round(float(raw) * 100))
-        except ValueError:
-            print("  ! numbers only")
-            continue
-        if cents <= 0:
-            print("  ! must be more than zero")
-            continue
-        return cents
+            return parse_price_cents(ask("Price (e.g. 289 or 289.99)"))
+        except ValueError as exc:
+            print(f"  ! {exc}")
 
 
 def ask_quantity() -> int:
@@ -113,16 +90,10 @@ def ask_quantity() -> int:
     lot of the same accessory) can carry a higher count and stays listed,
     at a lower remaining count, until every unit sells."""
     while True:
-        raw = ask("Quantity in stock", default="1")
         try:
-            quantity = int(raw)
-        except ValueError:
-            print("  ! whole numbers only")
-            continue
-        if quantity < 1:
-            print("  ! must be at least 1")
-            continue
-        return quantity
+            return parse_quantity(ask("Quantity in stock", default="1"))
+        except ValueError as exc:
+            print(f"  ! {exc}")
 
 
 def ask_specs() -> list[str]:
@@ -140,20 +111,16 @@ def ask_specs() -> list[str]:
 
 def load_pillow(sources: list[Path]):
     """Import Pillow (with HEIC support when available) for converting
-    `sources`. Returns (Image, ImageOps), or None if Pillow is missing."""
-    try:
-        import pillow_heif
+    `sources`. Returns (Image, ImageOps), or None if Pillow is missing.
 
-        pillow_heif.register_heif_opener()  # teaches Pillow to read iPhone HEICs
-        heif_available = True
-    except ImportError:
-        heif_available = False
-
-    try:
-        from PIL import Image, ImageOps
-    except ImportError:
+    The import itself lives in app/inventory.py, shared with the admin
+    panel; what to *say* about it is this CLI's business, so the prints
+    stay here."""
+    pillow = open_pillow()
+    if pillow is None:
         print("  ! Pillow missing — run: pip3 install -r backend/requirements.txt")
         return None
+    Image, ImageOps, heif_available = pillow
 
     # A missing pillow-heif doesn't stop the script — Image.open() just raises
     # per file below and gets skipped — so on an all-HEIC folder every photo
@@ -168,32 +135,6 @@ def load_pillow(sources: list[Path]):
             "(or activate the project's .venv) and re-run."
         )
     return Image, ImageOps
-
-
-def save_as_jpeg(src: Path, dest: Path, Image, ImageOps) -> tuple[int, int]:
-    """Convert one photo to an upright, resized JPEG at `dest`. Returns its
-    final (width, height); raises if the file can't be read."""
-    with Image.open(src) as img:
-        # Phones record rotation in EXIF rather than rotating pixels.
-        # Without this, portrait shots come out sideways on the site.
-        img = ImageOps.exif_transpose(img)
-
-        # Flatten transparency onto white; a PNG with an alpha channel
-        # saved straight to JPEG turns its transparent areas black.
-        if img.mode in ("RGBA", "LA", "P"):
-            img = img.convert("RGBA")
-            flat = Image.new("RGB", img.size, (255, 255, 255))
-            flat.paste(img, mask=img.split()[-1])
-            img = flat
-        else:
-            img = img.convert("RGB")
-
-        if img.width > MAX_WIDTH:
-            ratio = MAX_WIDTH / img.width
-            img = img.resize((MAX_WIDTH, round(img.height * ratio)), Image.LANCZOS)
-
-        img.save(dest, "JPEG", quality=JPEG_QUALITY, optimize=True)
-        return img.size
 
 
 def find_photos(src_dir: Path) -> list[Path]:
@@ -283,7 +224,7 @@ def main() -> int:
     # The title is never typed by hand — it's always Brand Model Storage,
     # so cards and search stay consistent across every item. Condition is
     # shown separately (already surfaced at the bottom of the product page).
-    name = f"{brand} {model} {storage}"
+    name = build_name(brand, model, storage)
     item_id = slugify(name)
     while item_id in existing_ids:
         print(f"  ! id '{item_id}' already exists")

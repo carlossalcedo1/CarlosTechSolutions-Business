@@ -16,8 +16,6 @@ sold_store.py — don't use this script for those.
 
 from __future__ import annotations
 
-import datetime as dt
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -26,28 +24,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from app.catalog import CATALOG_PATH, load_catalog, save_catalog
+from app.inventory import (
+    DEPLOY_SCRIPT,
+    REPO_ROOT,
+    SOLD_ITEMS_PATH,
+    apply_sale,
+    load_sold_items,
+    make_sold_record,
+    save_sold_items,
+)
 from app.models import Item
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-DEPLOY_SCRIPT = REPO_ROOT / "deploy" / "deploy.sh"
-
-# scripts/sold_item.py -> repo root -> backend/data/sold_items.json
-# Same gitignored runtime-data folder as sold_state.json (see config.py) —
-# this is a local sales log, not source, and never belongs in git.
-SOLD_ITEMS_PATH = REPO_ROOT / "backend" / "data" / "sold_items.json"
-
-
-def load_sold_items(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
-    return json.loads(path.read_text())
-
-
-def save_sold_items(path: Path, records: list[dict]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(records, indent=2) + "\n")
-    tmp.replace(path)
 
 
 def print_items(items: list[Item]) -> None:
@@ -93,16 +79,6 @@ def ask_bool(prompt: str, *, default: bool) -> bool:
     return raw.startswith("y")
 
 
-def make_sold_record(item: Item, units: int) -> dict:
-    # Logged as the units sold in this one sale, not what the listing
-    # started with — a bulk listing's remaining units are still for sale
-    # and get their own record whenever they, in turn, sell.
-    record = item.model_dump(mode="json")
-    record["quantity"] = units
-    record["soldDate"] = dt.date.today().isoformat()
-    return record
-
-
 def run_deploy() -> int:
     """Hand off to deploy/deploy.sh so the updated catalog goes live.
 
@@ -136,12 +112,12 @@ def main() -> int:
 
         sold_records.append(make_sold_record(item, units))
 
-        remaining = item.quantity - units
+        # Same reshaping the admin panel's "Delete listing" does — one
+        # implementation in app/inventory.py, so the two can't disagree.
+        items, remaining = apply_sale(items, index, units)
         if remaining > 0:
-            items[index] = item.model_copy(update={"quantity": remaining})
             note = f"{units} unit(s) sold, {remaining} left"
         else:
-            del items[index]
             note = f"{units} unit(s) sold, none left — removed from the catalog"
 
         save_catalog(items)
