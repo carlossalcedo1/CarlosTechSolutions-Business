@@ -5,6 +5,11 @@
 #   ./deploy/deploy.sh                  frontend + backend
 #   ./deploy/deploy.sh --backend-only   skip the npm build
 #   ./deploy/deploy.sh --frontend-only  skip the API rebuild
+#   ./deploy/deploy.sh --skip-tests     deploy without running pytest
+#
+# The test suite is a gate, not a suggestion: a failure stops the deploy.
+# --skip-tests exists for the 2am "the site is down and I know why" case,
+# which is the only reason to use it.
 #
 # Caddy serves ../frontend/dist through a bind mount, so a fresh frontend
 # build is live the moment it lands on disk — no restart, no downtime. The
@@ -22,12 +27,14 @@ cd "$REPO_ROOT"
 
 DO_FRONTEND=1
 DO_BACKEND=1
+DO_TESTS=1
 
 for arg in "$@"; do
 	case "$arg" in
 		--backend-only)  DO_FRONTEND=0 ;;
 		--frontend-only) DO_BACKEND=0 ;;
-		-h|--help)       sed -n '2,13p' "${BASH_SOURCE[0]}"; exit 0 ;;
+		--skip-tests)    DO_TESTS=0 ;;
+		-h|--help)       sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 0 ;;
 		*) echo "Unknown option: $arg" >&2; exit 2 ;;
 	esac
 done
@@ -86,6 +93,37 @@ if [ "$DO_BACKEND" = "1" ]; then
 	echo "Configuration looks complete."
 fi
 
+if [ "$DO_TESTS" = "1" ]; then
+	step "Running tests"
+
+	# Prefer the repo's venv (see backend/requirements-dev.txt for the
+	# two-line setup), fall back to whatever python3 is on PATH.
+	if [ -x "$REPO_ROOT/.venv/bin/python" ]; then
+		PYTEST_PYTHON="$REPO_ROOT/.venv/bin/python"
+	else
+		PYTEST_PYTHON="$(command -v python3 || true)"
+	fi
+
+	if [ -z "$PYTEST_PYTHON" ] || ! "$PYTEST_PYTHON" -c 'import pytest' 2>/dev/null; then
+		# Deliberately fatal. A gate that silently skips itself when the
+		# tooling is missing is worse than no gate, because it still reads
+		# like the tests ran.
+		echo "pytest isn't available, so the tests can't run." >&2
+		echo "Set it up once:" >&2
+		echo "  python3 -m venv .venv" >&2
+		echo "  .venv/bin/pip install -r backend/requirements-dev.txt" >&2
+		echo "Or deploy anyway with --skip-tests." >&2
+		exit 1
+	fi
+
+	"$PYTEST_PYTHON" -m pytest || {
+		echo "Tests failed — not deploying." >&2
+		exit 1
+	}
+else
+	warn "Skipping tests (--skip-tests)."
+fi
+
 if [ "$DO_FRONTEND" = "1" ]; then
 	step "Installing frontend dependencies"
 	(cd frontend && npm ci)
@@ -113,8 +151,12 @@ step "Checking the site answers"
 if curl -fsS -o /dev/null --max-time 5 http://127.0.0.1:8081/; then
 	echo "Frontend OK."
 else
-	warn "http://127.0.0.1:8081/ did not respond. Is the stack up?"
+	# Fatal, not a warning: Caddy serves ../frontend/dist through a bind
+	# mount, so if this fails the broken build is already what visitors
+	# get. Exiting 0 here would report a successful deploy of a dead site.
+	echo "http://127.0.0.1:8081/ did not respond. Is the stack up?" >&2
 	echo "  cd deploy && docker compose ps" >&2
+	exit 1
 fi
 
 if [ "$DO_BACKEND" = "1" ]; then
