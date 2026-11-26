@@ -9,17 +9,22 @@ strings out — so they can be previewed or tested without Stripe or Resend.
   render) plus a hand-written plain-text version.
 - `sale_alert`: the "Sold" alert to you. Admin-only, so plain text and
   descriptive rather than pretty — everything needed to ship the order.
-- `sale_push`: the same sale, cut down to a lock-screen glance for Pushover
-  (app/notifier.py). Lives here and not in notifier.py so all the
-  Stripe-session shape knowledge stays in one file.
+- `sale_push`: the same sale as a Pushover notification (app/notifier.py).
+  Lives here and not in notifier.py so all the Stripe-session shape
+  knowledge stays in one file.
 """
 
 from __future__ import annotations
 
+import datetime as dt
+import logging
 from html import escape
+from zoneinfo import ZoneInfo
 
 from .codes import CodeItem
 from .models import Item
+
+logger = logging.getLogger("app.emails")
 
 # Mirrors CONTACT_PHONE in frontend/src/lib/constants.ts.
 CONTACT_PHONE = "(305) 763-2541"
@@ -32,6 +37,40 @@ def format_cents(cents: int) -> str:
     rule, plus thousands separators."""
     dollars = cents / 100
     return f"${dollars:,.0f}" if cents % 100 == 0 else f"${dollars:,.2f}"
+
+
+def _format_sold_at(timestamp: int | None, timezone_name: str) -> str:
+    """MM/DD/YYYY HH:MM, 24-hour, in the shop's timezone.
+
+    `timestamp` is the Stripe *event's* created time, which is when the
+    payment completed. Deliberately not datetime.now(): Stripe retries
+    deliveries, and a retry hours later should still report when the sale
+    actually happened, not when the retry arrived.
+    """
+    moment = (
+        dt.datetime.fromtimestamp(timestamp, dt.timezone.utc)
+        if timestamp is not None
+        else dt.datetime.now(dt.timezone.utc)
+    )
+    try:
+        zone = ZoneInfo(timezone_name)
+    except Exception:
+        # A typo'd TIMEZONE shouldn't cost the whole notification, but it
+        # shouldn't pass silently either — the time would be hours off.
+        logger.warning("Unknown timezone %r — formatting the sale time as UTC", timezone_name)
+        zone = dt.timezone.utc
+    return moment.astimezone(zone).strftime("%m/%d/%Y %H:%M")
+
+
+def _address_lines(session: dict) -> list[str]:
+    """The shipping address as display lines, street first."""
+    address = _shipping_details(session).get("address") or {}
+
+    street = ", ".join(p for p in [address.get("line1"), address.get("line2")] if p)
+    state_zip = " ".join(p for p in [address.get("state"), address.get("postal_code")] if p)
+    locality = ", ".join(p for p in [address.get("city"), state_zip, address.get("country")] if p)
+
+    return [line for line in [street, locality] if line]
 
 
 def _shipping_details(session: dict) -> dict:
@@ -183,43 +222,78 @@ def sale_alert(item: Item | CodeItem, session: dict, *, code: str | None = None)
     return f"Sold: {item.name} for {paid}{code_note}", "\n".join(lines)
 
 
+def _listing_url(item: Item | CodeItem, *, site_url: str, code: str | None) -> str:
+    """Where this sale's listing lives on the site.
+
+    Two routes, because a code listing was never in the catalog: a catalog
+    item is /product/<id> and a code listing is /code/<CODE> (see
+    frontend/src/App.tsx). Both survive the sale — the product page shows
+    Sold once every unit is gone, and a code lookup deliberately keeps
+    resolving after it sells so the buyer can reopen their link.
+    """
+    path = f"code/{code}" if code else f"product/{item.id}"
+    return f"{site_url.rstrip('/')}/{path}"
+
+
 def sale_push(
-    item: Item | CodeItem, session: dict, *, code: str | None = None
+    item: Item | CodeItem,
+    session: dict,
+    *,
+    timezone_name: str,
+    site_url: str,
+    code: str | None = None,
+    sold_at: int | None = None,
 ) -> tuple[str, str, str | None]:
     """Returns (title, message, url) for the Pushover alert — see notifier.py.
-    `code` is set for a code-only listing, same as `sale_alert`.
 
-    Deliberately not the email's contents. This is what's worth reading on a
-    lock screen standing in a doorway: what sold, for how much, who to, and
-    the inventory number you'd use to find the device. The email has the full
-    shipping address and the rest of what packing an order actually needs.
+    The message is Pushover HTML, so the caller MUST pass html=True to
+    send_push or the anchor arrives as visible markup. test_webhook.py pins
+    that coupling.
 
-    Unlike `sale_alert` this *does* carry a Stripe dashboard link. The reason
-    that link left the email — an unfamiliar domain mailing a financial-
-    platform URL next to dollar amounts is the exact shape spam filters look
-    for — has no equivalent in a push, and the payment is the one thing you'd
-    want to open next.
+    `timezone_name` and `site_url` are passed in rather than read from
+    Settings so this file stays pure functions, the same way
+    buyer_confirmation takes site_url. `sold_at` is the Stripe event's
+    created timestamp; see _format_sold_at for why it isn't just now().
+    `code` is set for a code-only listing.
+
+    Two links, because Pushover allows one `url` field and these do
+    different jobs: the listing (in the body) is what sold, and the Stripe
+    payment (the `url` button) is the money. The reason that Stripe link
+    left the email — an unfamiliar domain mailing a financial-platform URL
+    next to dollar amounts is the exact shape spam filters look for — has no
+    equivalent in a push.
     """
     paid = format_cents(session.get("amount_total") or item.priceCents)
     customer = session.get("customer_details") or {}
-    address = _shipping_details(session).get("address") or {}
-
     buyer = customer.get("name") or customer.get("email") or "(not given)"
-    where = ", ".join(p for p in [address.get("city"), address.get("state")] if p)
 
-    lines = [
-        f"{paid} · {item.condition.value}",
-        f"Buyer: {buyer}",
-        f"Inventory: {item.inventoryId}",
-    ]
+    # Everything interpolated below is escaped, because html=True means this
+    # message is parsed as markup. The buyer's name and shipping address are
+    # typed into Stripe Checkout by the buyer, so this is the one place
+    # untrusted text reaches it.
+    # Three blocks, blank-line separated: who and where, when and how much,
+    # then what. Grouped this way because the first thing you do with a sale
+    # alert is decide whether to act now, and the money and the time answer
+    # that together.
+    lines = [f"Buyer: {escape(buyer)}"]
+    address = _address_lines(session)
+    if address:
+        lines.extend(escape(line) for line in address)
+    else:
+        lines.append("(no shipping address)")
+
+    lines += ["", f"Sold: {_format_sold_at(sold_at, timezone_name)}", f"Paid: {paid}"]
+
+    lines += ["", f"Item: {escape(item.name)}", f"Inventory: {escape(item.inventoryId)}"]
     if code:
-        # A code sale never appeared on the shop, so say so — otherwise I'd
-        # go looking for it in the catalog and not find it.
-        lines.append(f"Code: {code}")
-    if where:
-        lines.append(f"Ship to: {where}")
+        # A code sale never appeared on the shop, so say so — otherwise it
+        # looks like a catalog item that's gone missing.
+        lines.append(f"Code: {escape(code)}")
+
+    listing_url = _listing_url(item, site_url=site_url, code=code)
+    lines.append(f'<a href="{escape(listing_url, quote=True)}">View the listing</a>')
 
     payment_intent = session.get("payment_intent")
     url = f"https://dashboard.stripe.com/payments/{payment_intent}" if payment_intent else None
 
-    return f"Sold: {item.name}", "\n".join(lines), url
+    return f"{item.name} has been purchased for {paid}", "\n".join(lines), url

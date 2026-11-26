@@ -133,6 +133,68 @@ def test_shipping_read_from_the_older_top_level_field(client, sent, webhook):
     assert "Ocala, FL 34470" in alert["text"]
 
 
+class TestThePushContents:
+    """The template itself is covered in test_notifications.py; these are
+    about it being wired up correctly from the handler."""
+
+    def test_the_title_and_body_arrive_as_configured(self, client, sent, webhook):
+        webhook(client, make_event(make_session(amount_total=34412)))
+
+        push = sent["pushes"][0]
+        assert push["title"] == "iPad Air (4th gen) has been purchased for $344.12"
+        assert "Buyer: Dana Reyes" in push["message"]
+        assert "118 SW 12th St, Apt 4" in push["message"]
+        assert "Inventory: CTS-0142" in push["message"]
+        assert push["url"] == "https://dashboard.stripe.com/payments/pi_test_123"
+        assert push["priority"] == 1
+
+    def test_the_sale_time_comes_from_the_event_in_the_shop_timezone(self, client, sent, webhook):
+        """The handler has to pass event["created"] and settings.timezone
+        through; without either, the time is absent or five hours out."""
+        webhook(client, make_event(make_session(), created=1764178200))
+
+        assert "Sold: 11/26/2025 12:30" in sent["pushes"][0]["message"]
+
+    def test_the_configured_timezone_is_honoured(self, client, settings, sent, webhook):
+        settings.timezone = "UTC"
+
+        webhook(client, make_event(make_session(), created=1764178200))
+
+        assert "Sold: 11/26/2025 17:30" in sent["pushes"][0]["message"]
+
+    def test_the_listing_link_points_at_the_configured_site(self, client, settings, sent, webhook):
+        settings.site_url = "https://shop.example.com"
+
+        webhook(client, make_event(make_session()))
+
+        message = sent["pushes"][0]["message"]
+        assert '<a href="https://shop.example.com/product/ipad-air">View the listing</a>' in message
+
+    def test_html_mode_is_requested_so_the_link_is_not_raw_markup(self, client, sent, webhook):
+        """sale_push returns a Pushover-HTML message, so the handler has to
+        ask for html mode. Forget it and the anchor arrives as visible
+        markup — which looks broken but raises nothing, so only a test
+        catches it."""
+        webhook(client, make_event(make_session()))
+
+        assert sent["pushes"][0]["html"] is True
+
+    def test_a_code_sale_links_to_the_code_page(self, client, code_store, sent, webhook):
+        record = code_store.create(make_code_item("secret-iphone").model_dump())
+
+        webhook(client, make_event(make_session(metadata={"code": record.code}), event_id="evt_link"))
+
+        message = sent["pushes"][0]["message"]
+        assert f"/code/{record.code}" in message
+        assert "/product/" not in message
+
+    def test_an_event_with_no_timestamp_still_pushes(self, client, sent, webhook):
+        response = webhook(client, make_event(make_session(), created=None))
+
+        assert response.status_code == 200
+        assert "Sold: " in sent["pushes"][0]["message"]
+
+
 class TestCodeOnlySale:
     """A code sale is priced and described by the code's own record, not the
     catalog — the item was never on the shop."""
