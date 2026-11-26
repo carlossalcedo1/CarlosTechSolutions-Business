@@ -1,3 +1,10 @@
+# One .gitignore for the whole repo. frontend/ and deploy/ each used to
+# carry their own; both are folded in here so there's a single place to look
+# when something unexpectedly shows up in (or vanishes from) git status.
+#
+# Patterns without a slash match at every depth, which is why `.env` alone
+# already covers backend/.env and deploy/.env.
+
 # Secrets — never let these exist in git history
 .env
 .env.*
@@ -11,8 +18,8 @@ __pycache__/
 .venv/
 venv/
 
-# Runtime data (Phase 1) — sold-state store, subscriber list. Not source,
-# and on the server this is a mounted volume anyway (see Phase 5).
+# Runtime data — sold-state store, subscriber list. Not source, and on the
+# server it's a mounted volume anyway (see deploy/docker-compose.yml).
 backend/data/
 
 # Inventory — local to each computer by choice, never synced through git.
@@ -22,12 +29,31 @@ backend/data/
 scripts/items.json
 frontend/public/items/
 
-# OS / editor cruft
-.DS_Store
-*.swp
-
-# Node (frontend has its own, but belt and suspenders at the root)
+# Node — these came from frontend/.gitignore (the Vite scaffold's defaults)
 node_modules/
 dist/
 dist-ssr/
+*.local
+logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS / editor cruft — also from the frontend scaffold. *.sw? supersedes the
+# *.swp this file used to have, so vim's .swo/.swn are caught too.
+.DS_Store
+*.sw?
+# **/ on purpose: a pattern containing a slash is anchored to the directory
+# holding the .gitignore, so a bare `.vscode/*` here would only match one at
+# the repo root — not frontend/.vscode/, which is what it covered before it
+# was folded in from frontend/.gitignore.
+**/.vscode/*
+!**/.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
