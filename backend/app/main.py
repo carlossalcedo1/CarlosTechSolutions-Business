@@ -220,21 +220,34 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
 
             # Separate from the email on purpose: this is the one that gets
             # your attention, the email is the one with the shipping address.
-            # Last in the handler, and send_push never raises, so a Pushover
-            # outage can't cost us the sale record or either email.
+            #
+            # Belt and braces on the error handling, because of where we are
+            # in this handler: the sale is already recorded and both emails
+            # are already sent, but mark_processed() hasn't run yet. Anything
+            # that escapes here is a 500 to Stripe, Stripe retries, and the
+            # retry sails past already_processed() and records the same sale
+            # a second time — which for a multi-unit listing quietly eats
+            # another unit of stock. send_push swallows its own transport
+            # errors; this catches anything sale_push could throw while
+            # building the body. A missed notification is the acceptable
+            # failure here; a double-counted sale is not.
             if settings.pushover_configured:
-                push_title, push_message, push_url = sale_push(item, session, code=code)
-                send_push(
-                    settings,
-                    title=push_title,
-                    message=push_message,
-                    url=push_url,
-                    url_title="Open payment in Stripe" if push_url else None,
-                    # High priority: cuts through the phone's quiet hours. A
-                    # sale that ships the same business day is worth a buzz
-                    # at 7am; see LAUNCH_CHECKLIST's shipping promise.
-                    priority=1,
-                )
+                try:
+                    push_title, push_message, push_url = sale_push(item, session, code=code)
+                    send_push(
+                        settings,
+                        title=push_title,
+                        message=push_message,
+                        url=push_url,
+                        url_title="Open payment in Stripe" if push_url else None,
+                        # High priority: cuts through the phone's quiet
+                        # hours. A sale that ships the same business day is
+                        # worth a buzz at 7am; see LAUNCH_CHECKLIST's
+                        # shipping promise.
+                        priority=1,
+                    )
+                except Exception:
+                    logger.exception("Sale push failed for item_id=%r code=%r", item.id, code)
 
     store.mark_processed(event["id"])
     return {"received": True}
