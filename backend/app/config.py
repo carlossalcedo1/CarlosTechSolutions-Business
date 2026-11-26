@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import ClassVar
 from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -52,6 +53,21 @@ class Settings(BaseSettings):
     pushover_token: str = ""
     pushover_user_key: str = ""
 
+    # Admin sign-in allowlist. Comma-separated, and the only thing that
+    # decides who may ask for a login code.
+    #
+    #   ADMIN_USERNAMES=cmsal06
+    #   ADMIN_USERNAMES=cmsal06,sam:uQiZabc123...
+    #
+    # A bare name gets its code at PUSHOVER_USER_KEY — the owner's device.
+    # A `name:key` pair sends to that key instead, which is what a second
+    # admin needs: Pushover addresses a device, not a username this app
+    # invented, so there is no way to push to someone without their own key.
+    #
+    # Blank means nobody can sign in, which is the right default for a
+    # setting that hands out access.
+    admin_usernames: str = ""
+
     sold_state_path: Path = _DEFAULT_DATA_DIR / "sold_state.json"
     subscribers_path: Path = _DEFAULT_DATA_DIR / "subscribers.json"
     # Code-only listings (app/codes.py) — same volume, so codes survive a
@@ -71,6 +87,44 @@ class Settings(BaseSettings):
     @property
     def sale_notify_address(self) -> str:
         return self.sale_notify_email or self.notify_email
+
+    # Small on purpose. This is a personal admin panel, and a cap means a
+    # fat-fingered env var can't quietly widen access to a list nobody reads.
+    # ClassVar, or pydantic-settings treats it as another env-backed
+    # field and refuses to build the model at import time.
+    MAX_ADMINS: ClassVar[int] = 5
+
+    @property
+    def admin_allowlist(self) -> dict[str, str]:
+        """username -> the Pushover user key its code goes to.
+
+        Raises on a malformed value rather than silently dropping entries:
+        a typo'd allowlist that locks you out is recoverable, one that
+        quietly admits the wrong person is not. It raises here rather than
+        at import time so a bad value fails the login route with a clear
+        500 instead of stopping the container from booting at all — same
+        pattern as the Stripe keys.
+        """
+        allowlist: dict[str, str] = {}
+        for entry in self.admin_usernames.split(","):
+            entry = entry.strip()
+            if not entry:
+                continue
+            name, _, key = entry.partition(":")
+            name = name.strip().lower()
+            key = key.strip() or self.pushover_user_key
+            if not name:
+                raise ValueError(f"ADMIN_USERNAMES entry has no username: {entry!r}")
+            if name in allowlist:
+                raise ValueError(f"ADMIN_USERNAMES lists {name!r} twice")
+            allowlist[name] = key
+
+        if len(allowlist) > self.MAX_ADMINS:
+            raise ValueError(
+                f"ADMIN_USERNAMES has {len(allowlist)} entries; the maximum is "
+                f"{self.MAX_ADMINS}"
+            )
+        return allowlist
 
     @property
     def pushover_configured(self) -> bool:
