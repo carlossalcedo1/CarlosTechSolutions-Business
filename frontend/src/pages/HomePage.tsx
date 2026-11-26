@@ -252,7 +252,7 @@ export function HomePage() {
 
       {/* Other projects — replaces the old About Carlos teaser. Shared with
           the Services page via ProjectsSection. */}
-      <ProjectsSection id="projects" />
+      
 
       {/* Our Mission — full-bleed dark section, centered */}
       <section className="bg-night text-white">
@@ -326,6 +326,9 @@ export function HomePage() {
           </Link>
         </div>
       </section>
+
+      <ProjectsSection id="projects" />
+
     </div>
   );
 }

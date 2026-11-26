@@ -10,7 +10,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 // and primary nav. Everything wraps rather than collapsing into a
 // hamburger, so every link stays reachable on a phone.
 export function Header() {
-  const { user } = useAdminSession();
+  const { user, loading } = useAdminSession();
 
   return (
     <header className="border-b border-hairline">
@@ -57,12 +57,19 @@ export function Header() {
               to="/login"
               className="-m-1.5 flex items-center gap-1.5 p-1.5 hover:text-brand"
             >
-              {user ? (
+              {/* Nothing at all until the first /api/admin/me answers.
+                  Rendering the signed-out branch while loading makes the bar
+                  flash "Log in" and then correct itself on every page load,
+                  which looks like a glitch; an empty slot of the same height
+                  doesn't move anything when it fills. */}
+              {loading ? (
+                <span className="inline-block h-3.5 w-3.5" aria-hidden />
+              ) : user ? (
                 <span className="whitespace-nowrap">
                   {/* Just the name on a phone — "Hello, " is the first thing
                       worth losing when the row runs out of room. */}
                   <span className="hidden sm:inline">Hello, </span>
-                  {user.firstName}
+                  {user.username}
                 </span>
               ) : (
                 <>

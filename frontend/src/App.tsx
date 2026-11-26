@@ -20,10 +20,14 @@ import { RhinoTradePage } from "./pages/RhinoTradePage";
 import { AdminLoginPage } from "./pages/AdminLoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { AdminSessionProvider } from "./lib/useAdminSession";
 
 export function App() {
   return (
     <BrowserRouter>
+      {/* Inside the router so the provider can live above every page
+          and still be one fetch for the whole app. */}
+      <AdminSessionProvider>
       <ScrollToTop />
       <Routes>
         <Route element={<Layout />}>
@@ -49,6 +53,7 @@ export function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
+      </AdminSessionProvider>
     </BrowserRouter>
   );
 }

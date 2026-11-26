@@ -12,7 +12,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import load_catalog
@@ -27,7 +27,9 @@ from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
 from .schemas import (
     AdminLoginRequest,
+    AdminMeResponse,
     AdminPasskeyRequest,
+    AdminUser,
     AdminVerifyRequest,
     CheckoutRequest,
     CheckoutResponse,
@@ -38,6 +40,7 @@ from .schemas import (
     SubscribeRequest,
     TradeInRequest,
 )
+from .sessions import COOKIE_NAME, SessionStore
 from .sold_store import SoldStore
 
 logger = logging.getLogger("app.main")
@@ -74,6 +77,7 @@ async def lifespan(app: FastAPI):
     app.state.code_store = CodeStore(settings.codes_path)
     app.state.login_code_store = LoginCodeStore(settings.login_codes_path)
     app.state.passkey_store = PasskeyStore(settings.passkeys_path)
+    app.state.session_store = SessionStore(settings.sessions_path)
     logger.info("Loaded %d catalog items", len(items))
     yield
 
@@ -420,16 +424,13 @@ def admin_passkey_begin(
 
 
 @app.post("/api/admin/verify", response_model=OkResponse)
-def admin_verify(body: AdminVerifyRequest, request: Request):
-    """Step two: trade the pushed code for... nothing, yet.
-
-    The code is checked and burned here, correctly. What's missing is the
-    session that should come back with a success — there's no admin panel
-    to hold one open yet, so issuing a token now would mean designing its
-    lifetime, storage and revocation against no actual use. Returning a
-    bare ok keeps the code half honest and leaves that decision where it
-    belongs, with the panel.
-    """
+def admin_verify(
+    body: AdminVerifyRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+):
+    """Step two: trade the pushed code for a session."""
     _admin_limiter.check(client_ip(request))
 
     if not request.app.state.login_code_store.verify(body.username, body.code):
@@ -437,6 +438,81 @@ def admin_verify(body: AdminVerifyRequest, request: Request):
         # Telling them which would hand a guesser a progress bar.
         raise HTTPException(status_code=400, detail="That code isn't valid. Request a new one.")
 
+    token = request.app.state.session_store.create(body.username)
+    _set_session_cookie(response, token, settings)
+    return OkResponse()
+
+
+def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
+    """The token never touches JavaScript.
+
+    httponly is the whole point: a token in localStorage is readable by any
+    script that manages to run on the page, so one XSS is one stolen admin
+    session. A cookie the browser attaches automatically and JS can't read
+    takes that off the table.
+
+    samesite=lax rather than strict: strict would mean following a link
+    into the panel from anywhere else lands you signed out, which reads as
+    a bug. Lax still blocks the cross-site POSTs that CSRF needs.
+
+    max_age is left off on purpose, making this a session cookie that dies
+    with the browser. The real lifetime lives server-side in sessions.py,
+    where it can actually be revoked; a long-lived cookie would just be a
+    second, unrevokable copy of that decision.
+    """
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        httponly=True,
+        secure=settings.cookies_require_https,
+        samesite="lax",
+        path="/",
+    )
+
+
+def current_admin(request: Request) -> str | None:
+    """The signed-in admin's username, or None. Never raises."""
+    token = request.cookies.get(COOKIE_NAME)
+    return request.app.state.session_store.lookup(token)
+
+
+def require_admin(request: Request) -> str:
+    """Dependency for admin-only routes: 401 unless signed in.
+
+    Nothing uses it yet — the panel's routes don't exist. It lives here so
+    those routes are written with a guard from the first line rather than
+    having one retrofitted, which is how endpoints end up public by
+    accident.
+    """
+    username = current_admin(request)
+    if username is None:
+        raise HTTPException(status_code=401, detail="Sign in to continue.")
+    return username
+
+
+@app.get("/api/admin/me", response_model=AdminMeResponse)
+def admin_me(request: Request):
+    """Who, if anyone, is signed in on this browser.
+
+    200 with a null user when nobody is, rather than a 401: every page load
+    asks this, and "not signed in" is the ordinary answer on a shop front,
+    not an error worth logging.
+    """
+    username = current_admin(request)
+    return AdminMeResponse(user=AdminUser(username=username) if username else None)
+
+
+@app.post("/api/admin/logout", response_model=OkResponse)
+def admin_logout(request: Request, response: Response, settings: Settings = Depends(get_settings)):
+    """Sign out this device.
+
+    The row is deleted server-side first, so the session is dead even if
+    the browser ignores the cookie instruction. Clearing the cookie is
+    tidiness, not the mechanism — which is the difference between this and
+    a JWT, where deleting the client's copy is all you can do.
+    """
+    request.app.state.session_store.revoke(request.cookies.get(COOKIE_NAME))
+    response.delete_cookie(COOKIE_NAME, path="/")
     return OkResponse()
 
 

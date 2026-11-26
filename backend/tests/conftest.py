@@ -26,6 +26,7 @@ from backend.app.config import Settings, get_settings
 from backend.app.models import Item
 from backend.app.login_codes import LoginCodeStore
 from backend.app.passkeys import PasskeyStore
+from backend.app.sessions import SessionStore
 from backend.app.sold_store import SoldStore
 from backend.tests.helpers import make_item
 
@@ -58,6 +59,7 @@ def settings(tmp_path) -> Settings:
         codes_path=tmp_path / "codes.json",
         login_codes_path=tmp_path / "login_codes.json",
         passkeys_path=tmp_path / "passkeys.json",
+        sessions_path=tmp_path / "sessions.json",
         admin_usernames="cmsal06",
     )
 
@@ -80,6 +82,11 @@ def login_code_store(settings) -> LoginCodeStore:
 @pytest.fixture
 def passkey_store(settings) -> PasskeyStore:
     return PasskeyStore(settings.passkeys_path)
+
+
+@pytest.fixture
+def session_store(settings) -> SessionStore:
+    return SessionStore(settings.sessions_path)
 
 
 @pytest.fixture
@@ -188,7 +195,15 @@ def webhook(monkeypatch):
 
 
 @pytest.fixture
-def client(settings, catalog, sold_store, code_store, login_code_store, passkey_store):
+def client(
+    settings,
+    catalog,
+    sold_store,
+    code_store,
+    login_code_store,
+    passkey_store,
+    session_store,
+):
     """TestClient with the app's startup state swapped for the fixtures.
 
     The override has to happen inside the context manager: `with
@@ -210,5 +225,6 @@ def client(settings, catalog, sold_store, code_store, login_code_store, passkey_
         # later test pass for the wrong reason.
         main_module.app.state.login_code_store = login_code_store
         main_module.app.state.passkey_store = passkey_store
+        main_module.app.state.session_store = session_store
         yield test_client
     main_module.app.dependency_overrides.clear()

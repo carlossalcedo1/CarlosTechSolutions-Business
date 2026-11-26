@@ -20,6 +20,18 @@ class AdminLoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
 
 
+class AdminUser(BaseModel):
+    username: str
+
+
+class AdminMeResponse(BaseModel):
+    """Who's signed in, if anyone. `user` is null when not — a 200 with a
+    null rather than a 401, because "nobody is signed in" is the expected
+    answer on every public page load, not an error."""
+
+    user: AdminUser | None = None
+
+
 class AdminPasskeyRequest(BaseModel):
     """Who is trying to sign in with a passkey. The answer is the same for
     an unknown name and a known one with no device on file — see the route."""

@@ -79,6 +79,9 @@ class Settings(BaseSettings):
     # Enrolled passkeys (app/passkeys.py). Public keys and opaque ids —
     # nothing secret, but losing it means re-enrolling every device.
     passkeys_path: Path = _DEFAULT_DATA_DIR / "passkeys.json"
+    # Live admin sessions (app/sessions.py). Deleting this file signs
+    # everyone out, which is the blunt version of revoke_all.
+    sessions_path: Path = _DEFAULT_DATA_DIR / "sessions.json"
 
     @property
     def sender_address(self) -> str:
@@ -131,6 +134,18 @@ class Settings(BaseSettings):
                 f"{self.MAX_ADMINS}"
             )
         return allowlist
+
+    @property
+    def cookies_require_https(self) -> bool:
+        """Whether to set the Secure flag on the session cookie.
+
+        Driven by SITE_URL rather than hardcoded: Secure cookies are simply
+        not sent over http, so hardcoding True would make sign-in silently
+        impossible against the local dev server, and hardcoding False would
+        ship a session cookie that leaks over any plain-http request in
+        production.
+        """
+        return self.site_url.startswith("https://")
 
     @property
     def pushover_configured(self) -> bool:

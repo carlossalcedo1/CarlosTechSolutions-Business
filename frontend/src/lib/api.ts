@@ -179,3 +179,17 @@ export function verifyAdminLoginCode(username: string, code: string) {
 export function beginPasskeySignIn(username: string) {
   return post<{ ok: boolean }>("/admin/passkey/begin", { username });
 }
+
+/** Who's signed in on this browser, if anyone. 200 with a null user when
+ *  nobody is — see backend/app/main.py's admin_me for why that isn't a 401.
+ *  The session cookie is httponly, so this request is the only way the app
+ *  can find out; nothing can read it from document.cookie. */
+export function getAdminSession() {
+  return get<{ user: { username: string } | null }>("/admin/me");
+}
+
+/** Sign out this device. The server deletes the session row, so it's dead
+ *  whether or not the browser honours the cookie clear. */
+export function adminLogout() {
+  return post<{ ok: boolean }>("/admin/logout", {});
+}

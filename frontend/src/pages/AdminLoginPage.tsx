@@ -7,6 +7,7 @@ import {
   ApiError,
 } from "../lib/api";
 import { PersonMark } from "../components/PersonMark";
+import { useAdminSession } from "../lib/useAdminSession";
 import { CODE_LENGTH } from "../lib/adminLogin";
 
 // Admin sign-in, in two steps: a username gets an 8-digit code pushed to
@@ -22,6 +23,7 @@ import { CODE_LENGTH } from "../lib/adminLogin";
 // the wording lives in backend/app/main.py. Nothing on this page decides
 // what a failure says.
 export function AdminLoginPage() {
+  const { user, loading, refresh, signOut } = useAdminSession();
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"username" | "code" | "done">("username");
@@ -50,6 +52,9 @@ export function AdminLoginPage() {
     setBusy(true);
     try {
       await verifyAdminLoginCode(username.trim(), code);
+      // The cookie is set by now; re-asking is what lights up the header's
+      // greeting without a reload.
+      await refresh();
       setStep("done");
     } catch (err) {
       // The code stays in the box on purpose. A wrong digit is the usual
@@ -86,6 +91,38 @@ export function AdminLoginPage() {
     setUsername("");
     setCode("");
     setError(null);
+  }
+
+  // Already signed in: show that rather than a sign-in form, which would
+  // otherwise invite someone to burn a fresh code for a session they
+  // already have.
+  if (!loading && user && step !== "done") {
+    return (
+      <div className="mx-auto max-w-md px-4 py-20 text-center">
+        <h1 className="flex items-center justify-center gap-2.5 text-2xl font-semibold text-ink">
+          <PersonMark className="h-6 w-6" />
+          Admin Sign-In
+        </h1>
+        <p className="mt-6 text-ink">
+          Signed in as <span className="font-medium">{user.username}</span>.
+        </p>
+        <p className="mt-3 text-sm text-muted">
+          The admin panel itself isn&apos;t built yet — this is as far as the door goes.
+        </p>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          className="mt-6 rounded-full bg-ink px-7 py-3 text-sm font-medium text-white hover:opacity-90"
+        >
+          Sign out
+        </button>
+        <p className="mt-8">
+          <Link to="/" className="text-sm text-brand hover:underline">
+            Back to homepage
+          </Link>
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -205,17 +242,19 @@ export function AdminLoginPage() {
 
       {step === "done" && (
         <div className="mt-8 rounded-2xl border border-hairline bg-surface px-6 py-8 text-center">
-          <p className="font-medium text-ink">Code confirmed.</p>
+          <p className="font-medium text-ink">
+            Signed in{user ? <> as {user.username}</> : null}.
+          </p>
           <p className="mt-3 text-sm text-muted">
-            You&apos;re not signed in yet — there&apos;s no admin panel to sign in to. That
-            lands with the panel itself, and this page will carry you into it when it does.
+            The admin panel itself isn&apos;t built yet, so there&apos;s nowhere to go next —
+            but you&apos;ll stay signed in on this browser, and the header knows it.
           </p>
           <button
             type="button"
-            onClick={startOver}
+            onClick={() => void signOut()}
             className="mt-5 text-sm text-brand hover:underline"
           >
-            Start over
+            Sign out
           </button>
         </div>
       )}
