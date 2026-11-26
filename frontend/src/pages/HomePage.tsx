@@ -113,8 +113,11 @@ export function HomePage() {
           <h1 className="mt-8 text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink sm:mt-12">
             Your one stop shop for all your tech needs
           </h1>
-          <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-muted sm:text-xl">
-            Tech Repair &amp; Resell, done right, fair, and fast!
+          {/* max-w-3xl, not the 2xl the rest of the page uses: this line wants
+              679px and 2xl gives 672, so it was wrapping a lone "time." onto a
+              second line. */}
+          <p className="mx-auto mt-8 max-w-3xl text-lg leading-relaxed text-muted sm:text-xl">
+            Tech repair and resale, done right: fair prices and fast turnarounds, every time.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
