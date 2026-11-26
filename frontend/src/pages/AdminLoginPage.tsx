@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { requestAdminLoginCode, verifyAdminLoginCode, ApiError } from "../lib/api";
+import {
+  requestAdminLoginCode,
+  verifyAdminLoginCode,
+  beginPasskeySignIn,
+  ApiError,
+} from "../lib/api";
 import { PersonMark } from "../components/PersonMark";
 import { CODE_LENGTH } from "../lib/adminLogin";
 
@@ -56,6 +61,26 @@ export function AdminLoginPage() {
     }
   }
 
+  async function signInWithPasskey() {
+    if (busy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await beginPasskeySignIn(username.trim());
+      // Not reachable yet: nothing can enrol a passkey, so the server
+      // always refuses above. When enrolment lands, the WebAuthn ceremony
+      // goes here — navigator.credentials.get() with the challenge the
+      // route returns.
+      setStep("done");
+    } catch (err) {
+      // "Not enrolled." is the server's own wording, same as every other
+      // message on this page.
+      setError(messageFor(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function startOver() {
     setStep("username");
     setUsername("");
@@ -100,13 +125,29 @@ export function AdminLoginPage() {
 
             <ErrorNote error={error} />
 
-            <button
-              type="submit"
-              disabled={busy || !username.trim()}
-              className="w-full rounded-full bg-brand px-7 py-3 text-sm font-medium text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {busy ? "Sending…" : "Send confirmation code"}
-            </button>
+            {/* Side by side, and both grow: the labels are different
+                lengths, so letting one size to its text would leave the row
+                visibly lopsided. Wraps to stacked on a narrow phone rather
+                than squeezing two buttons into 343px. */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="submit"
+                disabled={busy || !username.trim()}
+                className="flex-1 rounded-full bg-brand px-5 py-3 text-sm font-medium whitespace-nowrap text-white hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy ? "Sending…" : "Send confirmation code"}
+              </button>
+              {/* type=button, not submit — inside a <form> an unqualified
+                  button submits it, which would fire the code request too. */}
+              <button
+                type="button"
+                onClick={signInWithPasskey}
+                disabled={busy || !username.trim()}
+                className="flex-1 rounded-full bg-ink px-5 py-3 text-sm font-medium whitespace-nowrap text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Sign in with Passkey
+              </button>
+            </div>
           </form>
         </>
       )}

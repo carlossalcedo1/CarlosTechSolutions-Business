@@ -24,6 +24,8 @@ from backend.app import main as main_module
 from backend.app.codes import CodeStore
 from backend.app.config import Settings, get_settings
 from backend.app.models import Item
+from backend.app.login_codes import LoginCodeStore
+from backend.app.passkeys import PasskeyStore
 from backend.app.sold_store import SoldStore
 from backend.tests.helpers import make_item
 
@@ -55,6 +57,7 @@ def settings(tmp_path) -> Settings:
         subscribers_path=tmp_path / "subscribers.json",
         codes_path=tmp_path / "codes.json",
         login_codes_path=tmp_path / "login_codes.json",
+        passkeys_path=tmp_path / "passkeys.json",
         admin_usernames="cmsal06",
     )
 
@@ -67,6 +70,16 @@ def sold_store(settings) -> SoldStore:
 @pytest.fixture
 def code_store(settings) -> CodeStore:
     return CodeStore(settings.codes_path)
+
+
+@pytest.fixture
+def login_code_store(settings) -> LoginCodeStore:
+    return LoginCodeStore(settings.login_codes_path)
+
+
+@pytest.fixture
+def passkey_store(settings) -> PasskeyStore:
+    return PasskeyStore(settings.passkeys_path)
 
 
 @pytest.fixture
@@ -175,7 +188,7 @@ def webhook(monkeypatch):
 
 
 @pytest.fixture
-def client(settings, catalog, sold_store, code_store):
+def client(settings, catalog, sold_store, code_store, login_code_store, passkey_store):
     """TestClient with the app's startup state swapped for the fixtures.
 
     The override has to happen inside the context manager: `with
@@ -189,5 +202,13 @@ def client(settings, catalog, sold_store, code_store):
         main_module.app.state.catalog = catalog
         main_module.app.state.sold_store = sold_store
         main_module.app.state.code_store = code_store
+        # These two were missing when the admin routes landed, which meant
+        # every admin test was reading and writing the repo's real
+        # backend/data/ files instead of tmp_path. Harmless-looking, since
+        # the tests still passed — but they were leaving live sign-in codes
+        # on the developer's machine, and a leftover one could have made a
+        # later test pass for the wrong reason.
+        main_module.app.state.login_code_store = login_code_store
+        main_module.app.state.passkey_store = passkey_store
         yield test_client
     main_module.app.dependency_overrides.clear()

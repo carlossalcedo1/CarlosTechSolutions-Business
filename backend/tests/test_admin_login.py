@@ -285,3 +285,113 @@ def test_malformed_allowlist_refuses_logins(client, monkeypatch, settings):
     settings.admin_usernames = "sam,sam"
     res = client.post("/api/admin/login", json={"username": "cmsal06"})
     assert res.status_code == 500
+
+
+# --- passkeys ---------------------------------------------------------------
+#
+# Nothing enrols one yet, so every path here currently ends in "Not
+# enrolled." That isn't a placeholder — with no credential on file it is the
+# true answer, and these tests pin it so the day enrolment lands the refusal
+# has to stop happening for the right reason.
+
+
+def test_passkey_is_not_enrolled_for_an_admin_with_no_device(client):
+    res = client.post("/api/admin/passkey/begin", json={"username": "cmsal06"})
+    assert res.status_code == 400
+    # Exactly this string — the sign-in page shows the server's detail
+    # verbatim, so this is what pins the user-visible copy.
+    assert res.json()["detail"] == "Not enrolled."
+
+
+def test_passkey_says_the_same_thing_for_a_stranger(client):
+    # On purpose: /api/admin/login has to tell an unknown name apart from a
+    # known one to be usable, but this route doesn't, so it gives away less.
+    res = client.post("/api/admin/passkey/begin", json={"username": "stranger"})
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Not enrolled."
+
+
+def test_passkey_begin_is_rate_limited(client):
+    for _ in range(5):
+        client.post("/api/admin/passkey/begin", json={"username": "cmsal06"})
+    res = client.post("/api/admin/passkey/begin", json={"username": "cmsal06"})
+    assert res.status_code == 429
+
+
+def test_an_enrolled_admin_gets_past_the_not_enrolled_check(client, settings):
+    # The one test that exercises the other branch. 501 because the WebAuthn
+    # ceremony isn't written — but it proves the store lookup works and that
+    # "Not enrolled." is driven by real data, not hardcoded.
+    from backend.app.passkeys import PasskeyStore
+
+    PasskeyStore(settings.passkeys_path).add_credential(
+        "cmsal06", credential_id="cred-1", public_key="pk-1", label="Test device"
+    )
+    res = client.post("/api/admin/passkey/begin", json={"username": "cmsal06"})
+    assert res.status_code == 501
+
+
+# --- the passkey store ------------------------------------------------------
+
+
+def test_store_starts_empty(tmp_path):
+    from backend.app.passkeys import PasskeyStore
+
+    assert PasskeyStore(tmp_path / "pk.json").has_credential("cmsal06") is False
+
+
+def test_enrol_then_find(tmp_path):
+    from backend.app.passkeys import PasskeyStore
+
+    store = PasskeyStore(tmp_path / "pk.json")
+    store.add_credential("cmsal06", credential_id="c1", public_key="k1")
+    assert store.has_credential("cmsal06") is True
+    assert store.has_credential("sam") is False
+
+
+def test_enrolment_is_username_normalized(tmp_path):
+    from backend.app.passkeys import PasskeyStore
+
+    store = PasskeyStore(tmp_path / "pk.json")
+    store.add_credential("  CMSal06 ", credential_id="c1", public_key="k1")
+    assert store.has_credential("cmsal06") is True
+
+
+def test_re_enrolling_the_same_device_replaces_it(tmp_path):
+    from backend.app.passkeys import PasskeyStore
+
+    store = PasskeyStore(tmp_path / "pk.json")
+    store.add_credential("cmsal06", credential_id="c1", public_key="k1")
+    store.add_credential("cmsal06", credential_id="c1", public_key="k2")
+    creds = store.list_credentials("cmsal06")
+    assert len(creds) == 1
+    assert creds[0]["public_key"] == "k2"
+
+
+def test_two_devices_both_stick(tmp_path):
+    from backend.app.passkeys import PasskeyStore
+
+    store = PasskeyStore(tmp_path / "pk.json")
+    store.add_credential("cmsal06", credential_id="c1", public_key="k1", label="Phone")
+    store.add_credential("cmsal06", credential_id="c2", public_key="k2", label="Laptop")
+    assert len(store.list_credentials("cmsal06")) == 2
+
+
+def test_revoking_a_device_works(tmp_path):
+    # A passkey you can enrol but not revoke is worse than none at all — a
+    # stolen laptop would be permanent.
+    from backend.app.passkeys import PasskeyStore
+
+    store = PasskeyStore(tmp_path / "pk.json")
+    store.add_credential("cmsal06", credential_id="c1", public_key="k1")
+    assert store.remove_credential("cmsal06", "c1") is True
+    assert store.has_credential("cmsal06") is False
+    assert store.remove_credential("cmsal06", "c1") is False
+
+
+def test_enrolment_survives_a_restart(tmp_path):
+    from backend.app.passkeys import PasskeyStore
+
+    path = tmp_path / "pk.json"
+    PasskeyStore(path).add_credential("cmsal06", credential_id="c1", public_key="k1")
+    assert PasskeyStore(path).has_credential("cmsal06") is True

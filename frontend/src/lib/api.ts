@@ -159,3 +159,23 @@ export function requestAdminLoginCode(username: string) {
 export function verifyAdminLoginCode(username: string, code: string) {
   return post<{ ok: boolean }>("/admin/verify", { username, code });
 }
+
+/**
+ * Start a passkey sign-in.
+ *
+ *   POST /api/admin/passkey/begin   { "username": "cmsal06" }
+ *     400  "Not enrolled."   no passkey on file for that name — which is
+ *                            also the answer for a name that isn't an admin
+ *                            at all, since this route has no reason to tell
+ *                            those apart
+ *     501  enrolled, but the WebAuthn ceremony isn't written yet
+ *     429  rate limited
+ *
+ * Nothing can enrol a passkey yet — that's a button in the admin panel's
+ * settings screen — so in practice this always refuses today. That refusal
+ * is real rather than a stub: with no credential on file you genuinely
+ * cannot sign in this way, and the button has to say so.
+ */
+export function beginPasskeySignIn(username: string) {
+  return post<{ ok: boolean }>("/admin/passkey/begin", { username });
+}

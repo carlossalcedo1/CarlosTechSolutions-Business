@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     # Live admin sign-in codes (app/login_codes.py). Same volume so a
     # redeploy mid-login doesn't strand someone holding a valid code.
     login_codes_path: Path = _DEFAULT_DATA_DIR / "login_codes.json"
+    # Enrolled passkeys (app/passkeys.py). Public keys and opaque ids —
+    # nothing secret, but losing it means re-enrolling every device.
+    passkeys_path: Path = _DEFAULT_DATA_DIR / "passkeys.json"
 
     @property
     def sender_address(self) -> str:

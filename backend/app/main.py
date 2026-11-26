@@ -22,10 +22,12 @@ from .emails import buyer_confirmation, sale_alert, sale_push
 from .mailer import send_email
 from .login_codes import LoginCodeStore, normalize_username
 from .notifier import PushError, send_push, send_push_strict
+from .passkeys import PasskeyStore
 from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
 from .schemas import (
     AdminLoginRequest,
+    AdminPasskeyRequest,
     AdminVerifyRequest,
     CheckoutRequest,
     CheckoutResponse,
@@ -71,6 +73,7 @@ async def lifespan(app: FastAPI):
     app.state.sold_store = SoldStore(settings.sold_state_path)
     app.state.code_store = CodeStore(settings.codes_path)
     app.state.login_code_store = LoginCodeStore(settings.login_codes_path)
+    app.state.passkey_store = PasskeyStore(settings.passkeys_path)
     logger.info("Loaded %d catalog items", len(items))
     yield
 
@@ -375,6 +378,45 @@ def admin_login(
         )
 
     return OkResponse()
+
+
+@app.post("/api/admin/passkey/begin", response_model=OkResponse)
+def admin_passkey_begin(
+    body: AdminPasskeyRequest, request: Request, settings: Settings = Depends(get_settings)
+):
+    """Start a passkey sign-in, if there's a passkey to start it with.
+
+    Today this only ever refuses, because nothing enrols a passkey yet —
+    that's a button in the admin panel's settings, and there's no admin
+    panel. The refusal is the real, correct answer rather than a stub: no
+    credential on file genuinely means you cannot sign in this way.
+
+    "Not enrolled." is also the answer for a username that isn't an admin
+    at all. Deliberately: /api/admin/login already has to distinguish those
+    two cases to be usable, but this route doesn't, so it gives away less.
+    """
+    _admin_limiter.check(client_ip(request))
+
+    username = normalize_username(body.username)
+    try:
+        allowlist = settings.admin_allowlist
+    except ValueError:
+        logger.exception("ADMIN_USERNAMES is malformed — refusing all admin logins")
+        raise HTTPException(status_code=500, detail="Admin sign-in is misconfigured.")
+
+    if username not in allowlist or not request.app.state.passkey_store.has_credential(
+        username
+    ):
+        raise HTTPException(status_code=400, detail="Not enrolled.")
+
+    # Unreachable until enrolment exists. When it does, this is where the
+    # WebAuthn ceremony starts: build a challenge, store it against the
+    # username with a short expiry the way login_codes.py does, and return
+    # it with the allowed credential ids for the browser to sign.
+    raise HTTPException(
+        status_code=501,
+        detail="Passkey sign-in isn't finished yet. Use a confirmation code.",
+    )
 
 
 @app.post("/api/admin/verify", response_model=OkResponse)

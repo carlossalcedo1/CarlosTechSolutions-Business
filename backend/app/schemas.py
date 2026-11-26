@@ -20,6 +20,13 @@ class AdminLoginRequest(BaseModel):
     username: str = Field(min_length=1, max_length=64)
 
 
+class AdminPasskeyRequest(BaseModel):
+    """Who is trying to sign in with a passkey. The answer is the same for
+    an unknown name and a known one with no device on file — see the route."""
+
+    username: str = Field(min_length=1, max_length=64)
+
+
 class AdminVerifyRequest(BaseModel):
     """Step two: the code that was pushed. Length is pinned to the 8 digits
     login_codes.py generates, so a wrong-shaped guess is rejected by
