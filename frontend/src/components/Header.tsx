@@ -54,8 +54,8 @@ export function Header() {
               this same file is the favicon, and a downscaled raster turns to
               mush at 16px in a browser tab. The print masters, including the
               full lockup for business cards, live in /brand. */}
-          <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
-          <span className="text-lg font-bold tracking-tight text-ink">NexFix</span>
+          <img src="/logo.svg" alt="" className="h-8 w-8" />
+          <span className="text-2xl font-bold tracking-tight text-ink">NexFix</span>
         </Link>
 
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[15px]">
@@ -77,12 +77,13 @@ export function Header() {
         </nav>
 
         {/* Invisible twin of the logo block, purely to balance the grid —
-            see the comment above. Hidden below sm: at that width the row
+            see the comment above. Its mark size and type scale have to track
+            the real one exactly, or the middle column stops being centred. Hidden below sm: at that width the row
             is already wrapping, and reserving a matching logo-width slot
             would just steal space the nav needs to wrap into. */}
         <div aria-hidden className="hidden shrink-0 items-center gap-2 opacity-0 sm:flex">
-          <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
-          <span className="text-lg font-bold tracking-tight">NexFix</span>
+          <img src="/logo.svg" alt="" className="h-8 w-8" />
+          <span className="text-2xl font-bold tracking-tight">NexFix</span>
         </div>
       </div>
     </header>
