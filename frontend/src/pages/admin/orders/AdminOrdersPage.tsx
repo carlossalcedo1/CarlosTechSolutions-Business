@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AdminPageHeader } from "../../../components/AdminLayout";
 import {
   AdminTable,
@@ -12,6 +12,7 @@ import { ErrorNote } from "../../../components/admin/ui";
 import { formatPrice } from "../../../lib/format";
 import { getRecentOrders, markOrderShipped, ApiError, type AdminOrder } from "../../../lib/api";
 import { orderDate, orderTime } from "./format";
+import type { OrderNotice } from "./AdminOrderTrackingPage";
 
 // The five most recent orders, and the two things you do with an order once
 // it's paid: send it, and give the buyer a way to follow it.
@@ -60,6 +61,18 @@ export function AdminOrdersPage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof getRecentOrders>> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // A note from the tracking page about the shipping email. Taken once and
+  // then cleared from history, so a reload or coming back later doesn't
+  // repeat "was emailed" about something that happened earlier.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [notice] = useState<OrderNotice | null>(
+    () => (location.state as { notice?: OrderNotice } | null)?.notice ?? null,
+  );
+  useEffect(() => {
+    if (location.state) navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +130,19 @@ export function AdminOrdersPage() {
         title="Orders"
         description="The five most recent paid orders. Orders show up here from the moment Stripe confirms payment."
       />
+
+      {notice && (
+        <p
+          role="status"
+          className={`mt-4 rounded border px-3 py-2 text-sm ${
+            notice.tone === "ok"
+              ? "border-green-200 bg-green-50 text-green-800"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {notice.text}
+        </p>
+      )}
 
       <div className="mt-4">
         <ErrorNote error={error} />

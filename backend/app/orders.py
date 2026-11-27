@@ -80,6 +80,10 @@ def order_from_session(session: dict, item, code: str | None) -> dict:
         "paymentIntent": session.get("payment_intent"),
         "shippedAt": None,
         "trackingNumber": None,
+        # When the "your order has shipped" email went out. Its own field
+        # rather than inferred from trackingNumber, so a send that failed is
+        # retried on the next save and one that worked is never repeated.
+        "shippedEmailSentAt": None,
     }
 
 
@@ -154,6 +158,9 @@ class OrderStore:
         if order.get("shippedAt"):
             return order
         return self._update(order_id, shippedAt=time.time())
+
+    def mark_shipped_email_sent(self, order_id: str) -> dict | None:
+        return self._update(order_id, shippedEmailSentAt=time.time())
 
     def set_tracking(self, order_id: str, number: str) -> dict | None:
         """Adding a tracking number means it's shipped, so it marks it shipped

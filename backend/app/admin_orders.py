@@ -7,10 +7,17 @@ route requires a signed-in admin, applied where main.py includes the router.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from .orders import public_view, validate_tracking
+from .config import Settings, get_settings
+from .emails import order_shipped
+from .mailer import send_email
+from .orders import OrderStore, public_view, validate_tracking
+
+logger = logging.getLogger("app.admin_orders")
 
 router = APIRouter(prefix="/api/admin/orders")
 
@@ -53,12 +60,64 @@ class TrackingRequest(BaseModel):
 
 
 @router.put("/{order_id}/tracking")
-def set_tracking(order_id: str, body: TrackingRequest, request: Request):
+def set_tracking(
+    order_id: str,
+    body: TrackingRequest,
+    request: Request,
+    settings: Settings = Depends(get_settings),
+):
+    """Save the tracking number, then email the buyer that it shipped.
+
+    The number is saved first and stays saved whatever happens to the
+    email. A tracking number you've just typed off a label is the thing
+    that mustn't be lost; an email that didn't go is something the panel
+    can tell you about and you can follow up by text.
+    """
     try:
         number = validate_tracking(body.trackingNumber)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from None
-    order = request.app.state.order_store.set_tracking(order_id, number)
+    store: OrderStore = request.app.state.order_store
+    order = store.set_tracking(order_id, number)
     if order is None:
         raise HTTPException(404, "That order doesn't exist.")
-    return public_view(order)
+
+    view = public_view(store.get(order_id) or order)
+    view["shippedEmail"] = _send_shipped_email(store, order_id, settings)
+    return view
+
+
+def _send_shipped_email(store: OrderStore, order_id: str, settings: Settings) -> str:
+    """Email the buyer once. Returns what happened, for the panel to say.
+
+    "sent", "already-sent", "no-email", "not-configured" or "failed".
+    """
+    order = store.get(order_id) or {}
+    if order.get("shippedEmailSentAt"):
+        # Saving a corrected number doesn't email again — a second "your
+        # order has shipped" reads like a second package. The panel says so,
+        # so a fixed typo can be sent by text instead.
+        return "already-sent"
+    if not order.get("customerEmail"):
+        return "no-email"
+    if not settings.resend_api_key:
+        # Checked here rather than left to mailer.py, which logs and returns
+        # as if it had sent. Not marking it sent means that once a key is
+        # configured, the next save sends it.
+        return "not-configured"
+
+    view = public_view(order)
+    subject, html, text = order_shipped(
+        item_name=order.get("itemName") or "order",
+        tracking_number=order["trackingNumber"],
+        tracking_url=view["trackingUrl"],
+    )
+    try:
+        # No reply_to: the email points people to text instead, and sends
+        # from noreply@ so a reply doesn't land somewhere unread.
+        send_email(settings, to=order["customerEmail"], subject=subject, html=html, text=text)
+    except Exception:
+        logger.exception("Shipped email failed for order %s", order_id)
+        return "failed"
+    store.mark_shipped_email_sent(order_id)
+    return "sent"

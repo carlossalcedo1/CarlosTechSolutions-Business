@@ -345,8 +345,12 @@ export function markOrderShipped(id: string) {
   return post<AdminOrder>(`/admin/orders/${encodeURIComponent(id)}/shipped`, {});
 }
 
+// What happened to the "your order has shipped" email when tracking was
+// saved. The number is saved regardless; this is only what to tell you.
+export type ShippedEmailResult = "sent" | "already-sent" | "no-email" | "not-configured" | "failed";
+
 export function setOrderTracking(id: string, trackingNumber: string) {
-  return send<AdminOrder>(`/admin/orders/${encodeURIComponent(id)}/tracking`, {
+  return send<AdminOrder & { shippedEmail: ShippedEmailResult }>(`/admin/orders/${encodeURIComponent(id)}/tracking`, {
     method: "PUT",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ trackingNumber }),

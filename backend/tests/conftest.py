@@ -20,6 +20,7 @@ import datetime as dt
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app import admin_orders as admin_orders_module
 from backend.app import main as main_module
 from backend.app.codes import CodeStore
 from backend.app.config import Settings, get_settings
@@ -165,6 +166,9 @@ def sent(monkeypatch) -> dict[str, list]:
     monkeypatch.setattr(main_module, "send_email", fake_send_email)
     monkeypatch.setattr(main_module, "send_push", fake_send_push)
     monkeypatch.setattr(main_module, "send_push_strict", fake_send_push_strict)
+    # The Orders tab emails buyers when tracking is added. Imported by name
+    # there, so it's patched there — patching mailer would miss it.
+    monkeypatch.setattr(admin_orders_module, "send_email", fake_send_email)
     return captured
 
 

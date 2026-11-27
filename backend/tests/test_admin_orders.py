@@ -243,3 +243,118 @@ def test_bad_tracking_changes_nothing(admin, order_store):
 )
 def test_unknown_order(admin, method, path, kwargs):
     assert getattr(admin, method)(path, **kwargs).status_code == 404
+
+
+# --- the "your order has shipped" email -------------------------------------
+
+
+@pytest.fixture
+def can_email(settings):
+    # The test settings carry no Resend key on purpose (see conftest). Give
+    # them a fake one; the autouse `sent` fixture captures the send.
+    settings.resend_api_key = "re_test_fake"
+    return settings
+
+
+def add_tracking(admin, number="9400 1118 9922 3397 8463 21", order_id="cs_0"):
+    return admin.put(f"/api/admin/orders/{order_id}/tracking", json={"trackingNumber": number})
+
+
+def test_adding_tracking_emails_the_buyer(admin, order_store, sent, can_email):
+    seed(order_store, 1)
+    body = add_tracking(admin).json()
+    assert body["shippedEmail"] == "sent"
+
+    assert len(sent["emails"]) == 1
+    email = sent["emails"][0]
+    assert email["to"] == "b0@example.com"
+    assert email["subject"] == "Your order has shipped"
+    assert "Your Item 0 is on its way." in email["text"]
+    # The working link has the number unbroken; the printed one is grouped
+    # in fours to match the label.
+    assert "tLabels=9400111899223397846321" in email["html"]
+    assert "9400 1118 9922 3397 8463 21" in email["text"]
+
+
+def test_the_email_points_to_text_not_reply(admin, order_store, sent, can_email):
+    seed(order_store, 1)
+    add_tracking(admin)
+    email = sent["emails"][0]
+    assert "text us at (305) 763-2541" in email["text"]
+    assert "reply" not in email["text"].lower()
+    assert 'href="sms:+13057632541"' in email["html"]
+    # And it doesn't set one either — the email doesn't invite a reply.
+    assert not email.get("reply_to")
+
+
+def test_the_email_is_nexfix_branded(admin, order_store, sent, can_email):
+    seed(order_store, 1)
+    add_tracking(admin)
+    email = sent["emails"][0]
+    assert "NexFix" in email["html"] and "NexFix" in email["text"]
+    assert "CarlosTechSolutions" not in email["html"] + email["text"]
+
+
+def test_correcting_the_number_does_not_email_again(admin, order_store, sent, can_email):
+    seed(order_store, 1)
+    add_tracking(admin)
+    body = add_tracking(admin, "EA123456789US").json()
+    # A second "your order has shipped" reads like a second package.
+    assert body["shippedEmail"] == "already-sent"
+    assert len(sent["emails"]) == 1
+    # The corrected number is still saved.
+    assert order_store.get("cs_0")["trackingNumber"] == "EA123456789US"
+
+
+def test_a_failed_send_keeps_the_tracking_and_retries_later(
+    admin, order_store, sent, can_email, monkeypatch
+):
+    from backend.app import admin_orders
+
+    seed(order_store, 1)
+
+    def down(settings, **kwargs):
+        raise RuntimeError("Resend is down")
+
+    monkeypatch.setattr(admin_orders, "send_email", down)
+    body = add_tracking(admin).json()
+    assert body["shippedEmail"] == "failed"
+    # The number typed off the label is the thing that mustn't be lost.
+    assert order_store.get("cs_0")["trackingNumber"] == "9400111899223397846321"
+    assert order_store.get("cs_0").get("shippedEmailSentAt") is None
+
+    # Saving again once email is back sends it — which is why "sent" is its
+    # own field and not inferred from the tracking number being present.
+    monkeypatch.setattr(admin_orders, "send_email", lambda settings, **kw: sent["emails"].append(kw))
+    assert add_tracking(admin).json()["shippedEmail"] == "sent"
+    assert len(sent["emails"]) == 1
+
+
+def test_no_email_on_the_order(admin, order_store, sent, can_email):
+    seed(order_store, 1)
+    order_store._update("cs_0", customerEmail=None)
+    assert add_tracking(admin).json()["shippedEmail"] == "no-email"
+    assert sent["emails"] == []
+
+
+def test_without_a_resend_key_it_says_so(admin, order_store, sent):
+    # mailer.py logs and returns as if it had sent when there's no key; the
+    # route checks first so the panel doesn't claim an email went out.
+    seed(order_store, 1)
+    assert add_tracking(admin).json()["shippedEmail"] == "not-configured"
+    assert sent["emails"] == []
+    assert order_store.get("cs_0").get("shippedEmailSentAt") is None
+
+
+def test_mark_shipped_alone_sends_nothing(admin, order_store, sent, can_email):
+    # No tracking number, so nothing worth emailing yet.
+    seed(order_store, 1)
+    admin.post("/api/admin/orders/cs_0/shipped")
+    assert sent["emails"] == []
+
+
+def test_order_confirmation_is_nexfix_branded_too(client, sent, webhook):
+    webhook(client, make_event(make_session()))
+    buyer = sent["emails"][0]
+    assert "NexFix" in buyer["html"] and "NexFix" in buyer["text"]
+    assert "CarlosTechSolutions" not in buyer["html"] + buyer["text"]

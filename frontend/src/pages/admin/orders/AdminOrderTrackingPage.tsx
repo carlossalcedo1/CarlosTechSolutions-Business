@@ -3,7 +3,13 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { AdminPageHeader } from "../../../components/AdminLayout";
 import { ErrorNote, Field, PillButton, PillLink, inputClass } from "../../../components/admin/ui";
 import { formatPrice } from "../../../lib/format";
-import { getOrder, setOrderTracking, ApiError, type AdminOrder } from "../../../lib/api";
+import {
+  getOrder,
+  setOrderTracking,
+  ApiError,
+  type AdminOrder,
+  type ShippedEmailResult,
+} from "../../../lib/api";
 import { addressLines, orderDate } from "./format";
 
 // Add a tracking number to one order. Its own page rather than a field in
@@ -35,8 +41,11 @@ export function AdminOrderTrackingPage() {
     setSaving(true);
     setError(null);
     try {
-      await setOrderTracking(id, number);
-      navigate("/admin/orders");
+      const saved = await setOrderTracking(id, number);
+      // Back to the list, carrying what happened to the email. Every case
+      // gets said out loud — the one you most need to hear is the email that
+      // didn't go, since the buyer is waiting on it either way.
+      navigate("/admin/orders", { state: { notice: emailNotice(saved.shippedEmail, saved.customerName) } });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't save that tracking number.");
       setSaving(false);
@@ -50,7 +59,7 @@ export function AdminOrderTrackingPage() {
       </Link>
       <AdminPageHeader
         title="Add tracking"
-        description="Saving a tracking number marks the order shipped."
+        description="Saving a tracking number marks the order shipped and emails the buyer the tracking link."
       />
 
       <div className="mt-4">
@@ -116,4 +125,31 @@ export function AdminOrderTrackingPage() {
       )}
     </div>
   );
+}
+
+export type OrderNotice = { tone: "ok" | "warn"; text: string };
+
+function emailNotice(result: ShippedEmailResult, customer: string | null): OrderNotice {
+  const who = customer ?? "the buyer";
+  switch (result) {
+    case "sent":
+      return { tone: "ok", text: `Tracking saved, and ${who} was emailed that it shipped.` };
+    case "already-sent":
+      return {
+        tone: "warn",
+        text: `Tracking saved. ${who} was already emailed with the earlier number, so they weren't emailed again — text them if the number changed.`,
+      };
+    case "no-email":
+      return { tone: "warn", text: `Tracking saved, but this order has no email address, so ${who} wasn't notified.` };
+    case "not-configured":
+      return {
+        tone: "warn",
+        text: "Tracking saved, but email isn't set up on this server, so no shipping email went out.",
+      };
+    case "failed":
+      return {
+        tone: "warn",
+        text: `Tracking saved, but the shipping email didn't send. Text ${who} the tracking number, or save it again to retry.`,
+      };
+  }
 }

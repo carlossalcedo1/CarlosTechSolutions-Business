@@ -62,7 +62,7 @@ def buyer_confirmation(item: Item | CodeItem, *, amount_paid_cents: int, site_ur
 <tr><td align="center" style="padding:32px 16px;font-family:{_FONT};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e7e5e0;border-radius:16px;color:#111111;">
     <tr><td style="padding:32px 32px 0;">
-      <p style="margin:0;font-size:15px;font-weight:700;">CarlosTechSolutions</p>
+      <p style="margin:0;font-size:15px;font-weight:700;">NexFix</p>
       <h1 style="margin:28px 0 8px;font-size:34px;line-height:1.1;font-weight:800;">Congrats!</h1>
       <p style="margin:0;font-size:16px;line-height:1.5;color:#555555;">Your order is confirmed &mdash; the {name} is yours.</p>
     </td></tr>
@@ -89,7 +89,7 @@ def buyer_confirmation(item: Item | CodeItem, *, amount_paid_cents: int, site_ur
       <p style="margin:0;">Questions? Reply to this email or text <span style="white-space:nowrap;">{CONTACT_PHONE}</span>.</p>
     </td></tr>
   </table>
-  <p style="margin:16px 0 0;font-size:12px;color:#999999;">CarlosTechSolutions &middot; Gainesville, FL</p>
+  <p style="margin:16px 0 0;font-size:12px;color:#999999;">NexFix &middot; Gainesville, FL</p>
   <p style="margin:8px 0 0;font-size:12px;">
     <a href="{escape(returns_url)}" style="color:#999999;">Return policy</a>
     &nbsp;&middot;&nbsp;
@@ -115,7 +115,7 @@ def buyer_confirmation(item: Item | CodeItem, *, amount_paid_cents: int, site_ur
             "",
             f"Questions? Reply to this email or text {CONTACT_PHONE}.",
             "",
-            "CarlosTechSolutions · Gainesville, FL",
+            "NexFix · Gainesville, FL",
             f"Return policy: {returns_url}",
             f"Privacy policy: {privacy_url}",
         ]
@@ -223,3 +223,70 @@ def sale_push(
     url = f"https://dashboard.stripe.com/payments/{payment_intent}" if payment_intent else None
 
     return f"Sold: {item.name}", "\n".join(lines), url
+
+
+def order_shipped(
+    *,
+    item_name: str,
+    tracking_number: str,
+    tracking_url: str,
+) -> tuple[str, str, str]:
+    """The "your order has shipped" email, sent when a tracking number is
+    first saved in the admin panel. Returns (subject, html, text).
+
+    Text-only contact on purpose: it doesn't invite a reply, and the caller
+    sends it without a reply-to, so the only way back is the number below.
+    """
+    subject = "Your order has shipped"
+    name = escape(item_name)
+    # Grouped in fours, the way the label prints it, so the buyer can match
+    # it to the box. The link uses the number unbroken.
+    grouped = " ".join(tracking_number[i : i + 4] for i in range(0, len(tracking_number), 4))
+    sms = "sms:+1" + "".join(ch for ch in CONTACT_PHONE if ch.isdigit())
+
+    html = f"""<!doctype html>
+<html>
+<body style="margin:0;padding:0;background:#f6f5f2;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;">
+<tr><td align="center" style="padding:32px 16px;font-family:{_FONT};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border:1px solid #e7e5e0;border-radius:16px;color:#111111;">
+    <tr><td style="padding:32px 32px 0;">
+      <p style="margin:0;font-size:15px;font-weight:700;">NexFix</p>
+      <h1 style="margin:28px 0 8px;font-size:34px;line-height:1.1;font-weight:800;">Your order has shipped</h1>
+      <p style="margin:0;font-size:16px;line-height:1.5;color:#555555;">Your {name} is on its way.</p>
+    </td></tr>
+    <tr><td style="padding:24px 32px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e7e5e0;border-radius:12px;">
+        <tr><td style="padding:20px;">
+          <p style="margin:0;font-size:14px;color:#666666;">USPS tracking number</p>
+          <p style="margin:4px 0 16px;font-size:17px;font-weight:600;font-family:Menlo,Consolas,monospace;letter-spacing:0.5px;">{escape(grouped)}</p>
+          <a href="{escape(tracking_url)}" style="display:inline-block;background:#c2410c;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 22px;border-radius:999px;">View tracking</a>
+        </td></tr>
+      </table>
+    </td></tr>
+    <tr><td style="padding:0 32px 32px;font-size:14px;line-height:1.6;color:#555555;">
+      <p style="margin:0;">For more information, text us at <a href="{sms}" style="color:#111111;white-space:nowrap;">{CONTACT_PHONE}</a>.</p>
+    </td></tr>
+  </table>
+  <p style="margin:16px 0 0;font-size:12px;color:#999999;">NexFix &middot; Gainesville, FL</p>
+</td></tr>
+</table>
+</body>
+</html>"""
+
+    text = "\n".join(
+        [
+            "Your order has shipped",
+            "",
+            f"Your {item_name} is on its way.",
+            "",
+            f"USPS tracking number: {grouped}",
+            f"View tracking: {tracking_url}",
+            "",
+            f"For more information, text us at {CONTACT_PHONE}.",
+            "",
+            "NexFix · Gainesville, FL",
+        ]
+    )
+    return subject, html, text
+
