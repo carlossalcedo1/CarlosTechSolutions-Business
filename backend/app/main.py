@@ -233,13 +233,28 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
             # failure here; a double-counted sale is not.
             if settings.pushover_configured:
                 try:
-                    push_title, push_message, push_url = sale_push(item, session, code=code)
+                    push_title, push_message, push_url = sale_push(
+                        item,
+                        session,
+                        code=code,
+                        # The event's created time, not now(): Stripe retries,
+                        # and a retry should still report when the sale
+                        # happened rather than when the retry landed.
+                        sold_at=event.get("created"),
+                        timezone_name=settings.timezone,
+                        site_url=settings.site_url,
+                    )
                     send_push(
                         settings,
                         title=push_title,
                         message=push_message,
                         url=push_url,
                         url_title="Open payment in Stripe" if push_url else None,
+                        # sale_push builds a Pushover-HTML message so it can
+                        # carry a second link (the listing) alongside the
+                        # `url` button. Without this the anchor arrives as
+                        # visible markup.
+                        html=True,
                         # High priority: cuts through the phone's quiet
                         # hours. A sale that ships the same business day is
                         # worth a buzz at 7am; see LAUNCH_CHECKLIST's

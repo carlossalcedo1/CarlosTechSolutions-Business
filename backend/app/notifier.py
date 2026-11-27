@@ -41,6 +41,7 @@ def send_push(
     url: str | None = None,
     url_title: str | None = None,
     priority: int = 0,
+    html: bool = False,
 ) -> None:
     """Send one push. Logs and returns on failure instead of raising.
 
@@ -54,6 +55,13 @@ def send_push(
     (retries until acknowledged) and additionally requires `retry` and
     `expire` fields, which this does not send yet — passing 2 today would
     just get the request rejected.
+
+    `html` turns on Pushover's small HTML subset (<b>, <i>, <u>, <font
+    color>, <a href>) for the message. It exists because Pushover allows
+    exactly one `url` field, so a second link has to be an anchor inside the
+    message. Off by default: with it on, a bare & or < in plain text would
+    be parsed as markup, so only a caller that escapes its interpolations
+    should ask for it. The title is never HTML either way.
     """
     if not (settings.pushover_token and settings.pushover_user_key):
         # Mirrors mailer.py's missing-key behaviour: let the app run and be
@@ -72,6 +80,8 @@ def send_push(
         fields["url"] = url
     if url_title:
         fields["url_title"] = url_title
+    if html:
+        fields["html"] = "1"
 
     request = urllib.request.Request(
         _API_URL,

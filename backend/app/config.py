@@ -52,6 +52,12 @@ class Settings(BaseSettings):
     pushover_token: str = ""
     pushover_user_key: str = ""
 
+    # The shop's own timezone, used to format the sale time in the push
+    # (app/emails.py). Not cosmetic: containers run on UTC unless told
+    # otherwise, so without this a 12:30pm sale alerts as 17:30. Any IANA
+    # name works; an unrecognised one falls back to UTC and logs.
+    timezone: str = "America/New_York"
+
     sold_state_path: Path = _DEFAULT_DATA_DIR / "sold_state.json"
     subscribers_path: Path = _DEFAULT_DATA_DIR / "subscribers.json"
     # Code-only listings (app/codes.py) — same volume, so codes survive a
