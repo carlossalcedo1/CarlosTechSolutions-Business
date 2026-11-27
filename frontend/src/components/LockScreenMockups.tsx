@@ -114,7 +114,7 @@ const KEYS: Array<[string, string]> = [
   ["0", ""],
 ];
 
-function PasscodeScreen() {
+export function PasscodeScreen() {
   return (
     <Phone label="iPhone showing the Enter Passcode lock screen" screen="url(#passcode-bg)">
       <defs>
@@ -159,6 +159,96 @@ function PasscodeScreen() {
       <text x="256" y="552" fontSize="14" fill="#fff" textAnchor="end">
         Cancel
       </text>
+      <HomeIndicator light />
+    </Phone>
+  );
+}
+
+// The setup screen a reset or locked device greets you with.
+export function HelloScreen() {
+  return (
+    <Phone label="iPhone showing the hello setup screen" screen="url(#hello-bg)">
+      <defs>
+        <linearGradient id="hello-bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#eef1f6" />
+        </linearGradient>
+        <linearGradient id="hello-ink" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#2b6cf0" />
+          <stop offset="0.5" stopColor="#b44be1" />
+          <stop offset="1" stopColor="#f2554a" />
+        </linearGradient>
+      </defs>
+      <StatusBar />
+      <text
+        x="150"
+        y="320"
+        fontSize="68"
+        fontWeight="300"
+        fontStyle="italic"
+        fill="url(#hello-ink)"
+        textAnchor="middle"
+      >
+        hello
+      </text>
+      <text x="150" y="555" fontSize="14" fill="#8e8e93" textAnchor="middle">
+        Swipe up to open
+      </text>
+      <HomeIndicator />
+    </Phone>
+  );
+}
+
+// Unlocked as far as the home screen — apps and all.
+const APP_COLORS = [
+  "#34c759",
+  "#0a84ff",
+  "#ff9f0a",
+  "#ff375f",
+  "#5e5ce6",
+  "#64d2ff",
+  "#ffd60a",
+  "#30d158",
+  "#bf5af2",
+  "#ff453a",
+  "#8e8e93",
+  "#0a84ff",
+  "#ff9f0a",
+  "#34c759",
+  "#5e5ce6",
+  "#ff375f",
+  "#64d2ff",
+  "#ffd60a",
+  "#30d158",
+  "#bf5af2",
+];
+
+export function HomeScreen() {
+  return (
+    <Phone label="iPhone showing the home screen" screen="url(#home-bg)">
+      <defs>
+        <linearGradient id="home-bg" x1="0" y1="0" x2="0.6" y2="1">
+          <stop offset="0" stopColor="#3b5bdb" />
+          <stop offset="0.6" stopColor="#7048e8" />
+          <stop offset="1" stopColor="#c2255c" />
+        </linearGradient>
+      </defs>
+      <StatusBar light />
+      {APP_COLORS.map((color, i) => (
+        <rect
+          key={i}
+          x={34 + (i % 4) * 60}
+          y={80 + Math.floor(i / 4) * 72}
+          width="50"
+          height="50"
+          rx="12"
+          fill={color}
+        />
+      ))}
+      <rect x="22" y="506" width="256" height="76" rx="28" fill="#fff" fillOpacity="0.25" />
+      {["#34c759", "#0a84ff", "#ffffff", "#ff9f0a"].map((color, i) => (
+        <rect key={color} x={36 + i * 60} y="519" width="50" height="50" rx="12" fill={color} />
+      ))}
       <HomeIndicator light />
     </Phone>
   );

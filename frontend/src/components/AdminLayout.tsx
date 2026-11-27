@@ -19,6 +19,7 @@ const ADMIN_NAV: NavItem[] = [
   { to: "/", label: "Home", icon: <HomeMark className="h-4 w-4" />, end: true },
   { to: "/admin/list", label: "List" },
   { to: "/admin/orders", label: "Orders" },
+  { to: "/admin/packages", label: "Packages" },
   { to: "/admin/codes", label: "Codes" },
   { to: "/admin/settings", label: "Settings" },
 ];

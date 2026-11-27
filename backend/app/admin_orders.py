@@ -16,6 +16,7 @@ from .config import Settings, get_settings
 from .emails import order_shipped
 from .mailer import send_email
 from .orders import OrderStore, public_view, validate_tracking
+from .admin_packages import track_package
 
 logger = logging.getLogger("app.admin_orders")
 
@@ -84,6 +85,20 @@ def set_tracking(
 
     view = public_view(store.get(order_id) or order)
     view["shippedEmail"] = _send_shipped_email(store, order_id, settings)
+    # And watch it on the Packages tab, so you hear when it's delivered.
+    # track_package never raises for a Shippo problem; anything else going
+    # wrong here still mustn't lose the number just saved.
+    try:
+        track_package(
+            request.app.state.package_store,
+            settings,
+            number,
+            order.get("itemName") or f"Order {order_id}",
+            "order",
+            order_id,
+        )
+    except Exception:
+        logger.exception("Couldn't add order %s to Packages", order_id)
     return view
 
 

@@ -16,7 +16,7 @@ export type NavItem = {
 
 const SHOP_NAV: NavItem[] = [
   { to: "/shop", label: "Shop" },
-  { to: "/services", label: "Services" },
+  { to: "/services", label: "Service" },
   { to: "/about", label: "About" },
   { to: "/contact", label: "Contact" },
   { to: "/help", label: "FAQ" },
