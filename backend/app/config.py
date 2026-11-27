@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import ClassVar
 from urllib.parse import urlparse
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .catalog import CATALOG_PATH
@@ -56,6 +57,31 @@ class Settings(BaseSettings):
     pushover_token: str = ""
     pushover_user_key: str = ""
 
+    # Shippo — package tracking for the admin panel's Packages tab
+    # (app/shippo.py, app/admin_packages.py). Both blank means tracking is
+    # off: packages can still be listed, they just never get a status.
+    #   SHIPPO_API_TOKEN      Shippo portal -> API -> live token
+    #   SHIPPO_WEBHOOK_TOKEN  any long random string you make up; it goes on
+    #                         the end of the webhook URL you give Shippo, and
+    #                         an alert without it is ignored. Shippo doesn't
+    #                         sign its webhooks, so this is what stops anyone
+    #                         who finds the URL from faking "delivered".
+    shippo_api_token: str = ""
+    shippo_webhook_token: str = ""
+    # Shippo's free allowance. Registering a number past it would cost
+    # money, so the panel stops at this many a month instead.
+    shippo_monthly_limit: int = 30
+
+    @field_validator("shippo_monthly_limit", mode="before")
+    @classmethod
+    def _blank_limit_means_default(cls, value):
+        # A blank SHIPPO_MONTHLY_LIMIT= (as copied from .env.example) would
+        # otherwise fail to parse and stop the whole API from starting —
+        # for a setting that has an obvious default.
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return 30
+        return value
+
     # Admin sign-in allowlist. Comma-separated, and the only thing that
     # decides who may ask for a login code.
     #
@@ -94,6 +120,9 @@ class Settings(BaseSettings):
     # Paid orders and their shipping state (app/orders.py), written by the
     # Stripe webhook.
     orders_path: Path = _DEFAULT_DATA_DIR / "orders.json"
+    # Tracked packages (app/packages.py): orders you've shipped and parts
+    # on their way to you.
+    packages_path: Path = _DEFAULT_DATA_DIR / "packages.json"
     # Photos for codes made in the admin panel (app/admin_codes.py). On the
     # data volume beside codes.json, which is what lets the panel make a
     # code with photos on the live server without a deploy.

@@ -8,6 +8,7 @@ const CATEGORIES: Article["category"][] = [
   "Returns",
   "Trade-in",
   "Device unlocking",
+  "Device Help",
 ];
 
 export function HelpCenterPage() {
@@ -31,15 +32,6 @@ export function HelpCenterPage() {
         </Link>{" "}
         &gt; <span className="text-ink">Help center</span>
       </nav>
-
-      {/* Work-in-progress notice — remove once the help content is settled. */}
-      <div className="mb-8 rounded-lg border border-red-200 bg-red-50 px-5 py-4 text-center text-sm text-red-700">
-        This part of the website is currently being worked on, please{" "}
-        <Link to="/contact" className="font-medium underline underline-offset-2">
-          reach out to us
-        </Link>{" "}
-        with any questions.
-      </div>
 
       <div className="text-center">
         <h1 className="text-2xl font-semibold text-ink">Need help? We got you.</h1>
@@ -70,7 +62,9 @@ export function HelpCenterPage() {
           results.map((article) => (
             <div key={article.slug} className="rounded border border-hairline p-4">
               <p className="font-medium text-ink">{article.title}</p>
-              <p className="mt-1 text-sm text-muted">{article.body}</p>
+              <p className="mt-1 text-sm text-muted">
+                <ArticleBody article={article} />
+              </p>
               <p className="mt-2 text-xs text-muted">{article.category}</p>
             </div>
           ))
@@ -86,5 +80,28 @@ export function HelpCenterPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+function ArticleBody({ article }: { article: Article }) {
+  const { body, link } = article;
+  const at = link ? body.indexOf(link.text) : -1;
+  if (!link || at === -1) return <>{body}</>;
+  const linkClass = "font-medium text-brand hover:underline";
+  return (
+    <>
+      {body.slice(0, at)}
+      {/* A path on this site stays in the tab; anything else opens a new one. */}
+      {link.href.startsWith("/") ? (
+        <Link to={link.href} className={linkClass}>
+          {link.text}
+        </Link>
+      ) : (
+        <a href={link.href} target="_blank" rel="noreferrer" className={linkClass}>
+          {link.text}
+        </a>
+      )}
+      {body.slice(at + link.text.length)}
+    </>
   );
 }

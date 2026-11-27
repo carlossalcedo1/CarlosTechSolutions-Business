@@ -21,12 +21,14 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.app import admin_orders as admin_orders_module
+from backend.app import admin_packages as admin_packages_module
 from backend.app import main as main_module
 from backend.app.codes import CodeStore
 from backend.app.config import Settings, get_settings
 from backend.app.models import Item
 from backend.app.login_codes import LoginCodeStore
 from backend.app.orders import OrderStore
+from backend.app.packages import PackageStore
 from backend.app.passkeys import PasskeyStore
 from backend.app.sessions import SessionStore
 from backend.app.sold_store import SoldStore
@@ -63,6 +65,7 @@ def settings(tmp_path) -> Settings:
         passkeys_path=tmp_path / "passkeys.json",
         sessions_path=tmp_path / "sessions.json",
         orders_path=tmp_path / "orders.json",
+        packages_path=tmp_path / "packages.json",
         code_photos_dir=tmp_path / "code_photos",
         # Inventory editing defaults to the repo's real items.json, photos
         # and sold log. Every one of these has to be redirected, or a test
@@ -107,6 +110,11 @@ def session_store(settings) -> SessionStore:
 @pytest.fixture
 def order_store(settings) -> OrderStore:
     return OrderStore(settings.orders_path)
+
+
+@pytest.fixture
+def package_store(settings) -> PackageStore:
+    return PackageStore(settings.packages_path)
 
 
 @pytest.fixture
@@ -169,6 +177,8 @@ def sent(monkeypatch) -> dict[str, list]:
     # The Orders tab emails buyers when tracking is added. Imported by name
     # there, so it's patched there — patching mailer would miss it.
     monkeypatch.setattr(admin_orders_module, "send_email", fake_send_email)
+    # Delivered alerts from the Shippo webhook push from admin_packages.
+    monkeypatch.setattr(admin_packages_module, "send_push", fake_send_push)
     return captured
 
 
@@ -227,6 +237,7 @@ def client(
     passkey_store,
     session_store,
     order_store,
+    package_store,
 ):
     """TestClient with the app's startup state swapped for the fixtures.
 
@@ -251,5 +262,6 @@ def client(
         main_module.app.state.passkey_store = passkey_store
         main_module.app.state.session_store = session_store
         main_module.app.state.order_store = order_store
+        main_module.app.state.package_store = package_store
         yield test_client
     main_module.app.dependency_overrides.clear()

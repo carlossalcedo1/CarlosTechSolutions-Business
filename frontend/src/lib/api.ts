@@ -148,6 +148,20 @@ export function submitTradeIn(payload: TradeInPayload) {
   return post<{ ok: boolean }>("/trade-in", payload);
 }
 
+/** Send Request on the Services page — pushed to the admin's phone. */
+export interface ServiceRequestPayload {
+  service: "unlock" | "repair" | "sell" | "contact";
+  device: string;
+  service_requested?: string;
+  details: string[];
+  phone: string;
+  website?: string;
+}
+
+export function submitServiceRequest(payload: ServiceRequestPayload) {
+  return post<{ ok: boolean }>("/service-request", payload);
+}
+
 export function subscribe(email: string) {
   return post<{ ok: boolean }>("/subscribe", { email });
 }
@@ -343,6 +357,53 @@ export function getOrder(id: string) {
 
 export function markOrderShipped(id: string) {
   return post<AdminOrder>(`/admin/orders/${encodeURIComponent(id)}/shipped`, {});
+}
+
+// --- Admin packages (Shippo tracking) -------------------------------------------
+
+export type Carrier = "usps" | "fedex" | "ups";
+
+export interface TrackedPackage {
+  id: string;
+  trackingNumber: string;
+  // Missing on packages added before carriers were offered — those are USPS.
+  carrier?: Carrier;
+  label: string;
+  kind: "order" | "parts";
+  orderId: string | null;
+  createdAt: number;
+  registeredAt: number | null;
+  registerError: string | null;
+  // Shippo's status: UNKNOWN, PRE_TRANSIT, TRANSIT, DELIVERED, RETURNED, FAILURE.
+  status: string | null;
+  substatus: string | null;
+  statusDetails: string | null;
+  statusDate: string | null;
+  location: string;
+  deliveredAt: number | null;
+}
+
+export interface PackagesResponse {
+  packages: TrackedPackage[];
+  usedThisMonth: number;
+  monthlyLimit: number;
+  configured: boolean;
+}
+
+export function getPackages() {
+  return send<PackagesResponse>("/admin/packages");
+}
+
+export function addPackage(trackingNumber: string, label: string, carrier: Carrier) {
+  return post<TrackedPackage>("/admin/packages", { trackingNumber, label, carrier });
+}
+
+export function retryPackage(id: string) {
+  return post<TrackedPackage>(`/admin/packages/${encodeURIComponent(id)}/register`, {});
+}
+
+export function deletePackage(id: string) {
+  return send<{ ok: boolean }>(`/admin/packages/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 // What happened to the "your order has shipped" email when tracking was

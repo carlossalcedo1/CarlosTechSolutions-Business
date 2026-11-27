@@ -23,10 +23,12 @@ from .mailer import send_email
 from .login_codes import LoginCodeStore, normalize_username
 from .notifier import PushError, send_push, send_push_strict
 from .orders import OrderStore, order_from_session
+from .packages import PackageStore
 from .passkeys import PasskeyStore
 from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
 from .schemas import (
+    ServiceRequest,
     AdminLoginRequest,
     AdminMeResponse,
     AdminPasskeyRequest,
@@ -80,6 +82,7 @@ async def lifespan(app: FastAPI):
     app.state.passkey_store = PasskeyStore(settings.passkeys_path)
     app.state.session_store = SessionStore(settings.sessions_path)
     app.state.order_store = OrderStore(settings.orders_path)
+    app.state.package_store = PackageStore(settings.packages_path)
     logger.info("Loaded %d catalog items", len(items))
     yield
 
@@ -332,6 +335,51 @@ def contact(body: ContactRequest, request: Request, settings: Settings = Depends
     return OkResponse()
 
 
+_SERVICE_TITLES = {"unlock": "Unlock", "repair": "Repair", "sell": "Sell", "contact": "Contact"}
+
+
+def _one_line(text: str) -> str:
+    # The push is laid out one fact per line; a newline smuggled into a
+    # field would forge a line of its own ("Phone: ...").
+    return " ".join(text.split())
+
+
+@app.post("/api/service-request", response_model=OkResponse)
+def service_request(
+    body: ServiceRequest, request: Request, settings: Settings = Depends(get_settings)
+):
+    """Send Request on the Services page: straight to the admin's phone.
+
+    Pushed rather than emailed because these are people waiting on a
+    reply, and a push gets seen in minutes. send_push_strict, not the quiet
+    one: the customer is about to be told "we'll reach out", so if the push
+    didn't go they need to hear that instead and text directly.
+    """
+    _guard(request)
+    if body.website:
+        return OkResponse()
+
+    lines = [f"Device: {_one_line(body.device)}"] if body.device.strip() else []
+    if body.service_requested:
+        lines.append(f"Service: {_one_line(body.service_requested)}")
+    lines += [_one_line(d) for d in body.details if d.strip()]
+    lines.append(f"Phone: {body.phone}")
+
+    try:
+        send_push_strict(
+            settings,
+            title=f"Request: {_SERVICE_TITLES[body.service]}",
+            message="\n".join(lines),
+        )
+    except PushError:
+        logger.exception("Could not push a %s request", body.service)
+        raise HTTPException(
+            status_code=503,
+            detail="We couldn't send your request right now. Please text us at (305) 763-2541.",
+        )
+    return OkResponse()
+
+
 @app.post("/api/trade-in", response_model=OkResponse)
 def trade_in(body: TradeInRequest, request: Request, settings: Settings = Depends(get_settings)):
     _guard(request)
@@ -527,9 +575,20 @@ from .admin_codes import public_router as code_photos_router  # noqa: E402
 from .admin_codes import router as admin_codes_router  # noqa: E402
 from .admin_inventory import router as admin_inventory_router  # noqa: E402
 from .admin_orders import router as admin_orders_router  # noqa: E402
+from .admin_packages import public_router as shippo_webhook_router  # noqa: E402
+from .admin_packages import router as admin_packages_router  # noqa: E402
 
-for _router in (admin_inventory_router, admin_orders_router, admin_codes_router):
+for _router in (
+    admin_inventory_router,
+    admin_orders_router,
+    admin_codes_router,
+    admin_packages_router,
+):
     app.include_router(_router, dependencies=[Depends(require_admin)])
+
+# Shippo's tracking alerts. Public by necessity; guarded by the secret token
+# in its URL instead — see admin_packages.shippo_webhook.
+app.include_router(shippo_webhook_router)
 
 # The one admin-made thing that's public: a code's photos, which the buyer
 # holding the code has to be able to load. See admin_codes.py.

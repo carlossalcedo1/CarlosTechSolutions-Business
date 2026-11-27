@@ -3,8 +3,10 @@ export interface Article {
   title: string;
   slug: string;
   body: string;
-  category: "Orders" | "Shipping" | "Returns" | "Trade-in" | "Device unlocking";
+  category: "Orders" | "Shipping" | "Returns" | "Trade-in" | "Device unlocking" | "Device Help";
   tags: string[];
+  // Turns the first place `text` appears in the body into a link.
+  link?: { text: string; href: string };
 }
 
 export const articles: Article[] = [
@@ -63,5 +65,22 @@ export const articles: Article[] = [
     category: "Device unlocking",
     tags: ["unlocking"],
     body: "A factory unlocked device works with any compatible carrier — it isn't tied to a specific network.",
+  },
+  {
+    title: "Have an older device and can't install apps?",
+    slug: "older-device-apps",
+    category: "Device Help",
+    tags: ["apps", "app store", "older", "ios", "download"],
+    body: "Follow this YouTube video to allow 90% of apps to download from the App Store on older devices.",
+    // Placeholder: swap in the real video's URL.
+    link: { text: "YouTube video", href: "https://www.youtube.com/" },
+  },
+  {
+    title: "Device doesn't let you sign in to iCloud from the Settings app?",
+    slug: "icloud-sign-in-settings",
+    category: "Device Help",
+    tags: ["icloud", "apple id", "sign in", "log in", "settings", "app store"],
+    body: "Try signing in from the App Store with your Apple ID and password. If that doesn't work, contact us here.",
+    link: { text: "contact us here", href: "/contact" },
   },
 ];

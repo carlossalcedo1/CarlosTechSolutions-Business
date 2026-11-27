@@ -31,6 +31,7 @@ import { EditListingPage } from "./pages/admin/list/EditListingPage";
 import { DeleteListingPage } from "./pages/admin/list/DeleteListingPage";
 import { AdminOrdersPage } from "./pages/admin/orders/AdminOrdersPage";
 import { AdminOrderTrackingPage } from "./pages/admin/orders/AdminOrderTrackingPage";
+import { AdminPackagesPage } from "./pages/admin/packages/AdminPackagesPage";
 import { NewCodePage } from "./pages/admin/codes/NewCodePage";
 
 export function App() {
@@ -85,6 +86,7 @@ export function App() {
           <Route path="list/delete/:id" element={<DeleteListingPage />} />
           <Route path="orders" element={<AdminOrdersPage />} />
           <Route path="orders/:id/tracking" element={<AdminOrderTrackingPage />} />
+          <Route path="packages" element={<AdminPackagesPage />} />
           <Route path="codes" element={<AdminCodesPage />} />
           <Route path="codes/new" element={<NewCodePage />} />
           <Route path="settings" element={<AdminSettingsPage />} />

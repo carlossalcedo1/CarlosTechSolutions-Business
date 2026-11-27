@@ -43,7 +43,10 @@ where they bite.
 - [ ] `ssh` to the NUC, `cd` to the repo, `nano deploy/.env`.
 - [ ] **Pushover** — paste the two values you saved privately. Without them,
       admin sign-in returns 503 and nobody can get in: `send_push_strict`
-      refuses to claim a code was sent when it wasn't.
+      refuses to claim a code was sent when it wasn't. The Services and
+      Contact pages' **Send Request** goes out the same way, so without
+      Pushover every customer request fails too (they're told to text
+      instead), and Packages' "delivered" alerts never arrive.
       ```
       PUSHOVER_TOKEN=
       PUSHOVER_USER_KEY=
@@ -95,7 +98,7 @@ where they bite.
       (`request@`, `inquiry@`) and `SALE_NOTIFY_EMAIL` / `NOTIFY_EMAIL` still
       point at `carlostechsolutions.com`. They keep working while that domain
       and its Cloudflare Email Routing rules are alive. Moving them is
-      step 8 — a separate change, deliberately not bundled with the cutover.
+      step 10 — a separate change, deliberately not bundled with the cutover.
 
 ## 5. Stripe
 
@@ -109,7 +112,43 @@ where they bite.
       payment, then delete it.
 - [ ] Redirect URLs need no dashboard change — they come from `SITE_URL`.
 
-## 6. Deploy
+## 6. Shippo — package tracking
+
+The admin panel's **Packages** tab. Shippo watches each tracking number
+(orders get added automatically when you save their tracking; parts you add
+by hand) and calls the site back on every scan. A delivery pushes to your
+phone through Pushover.
+
+- [ ] In `deploy/.env` on the NUC:
+      ```
+      SHIPPO_API_TOKEN=        # the *live* token, from the Shippo portal
+      SHIPPO_WEBHOOK_TOKEN=    # a long random string you make up yourself
+      SHIPPO_MONTHLY_LIMIT=30
+      ```
+      Shippo doesn't issue the webhook token — generate one with
+      `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`.
+      A blank `SHIPPO_MONTHLY_LIMIT` also means 30.
+- [ ] Shippo portal → Settings → API → **Webhooks**: one webhook, Event type
+      **Track Updated**, Environment **Production**, URL
+      ```
+      https://shop.nexfixtech.com/api/shippo-webhook?token=<SHIPPO_WEBHOOK_TOKEN>
+      ```
+      The `?token=` must match `deploy/.env` exactly — an alert without it
+      gets a 404 and changes nothing. That's the only thing stopping a
+      stranger who finds the URL from faking "delivered": Shippo doesn't
+      sign its webhooks.
+- [ ] If the webhook was first set up against the old domain, **change its
+      URL to the new one** here. Shippo keeps calling whatever URL it has.
+- [ ] Create the webhook *before* tracking anything. Shippo only reports on
+      numbers registered after the webhook exists; a number added before it
+      stays at its first status for good.
+- [ ] Registrations are capped at `SHIPPO_MONTHLY_LIMIT` a month, because
+      past Shippo's free allowance each one costs money. Confirm in the
+      Shippo dashboard that tracking-only numbers (labels not bought through
+      Shippo) count toward the free allowance — the docs only say they
+      "incur a cost per tracking number".
+
+## 7. Deploy
 
 - [ ] On the NUC, from the repo root:
       ```
@@ -121,7 +160,7 @@ where they bite.
 - [ ] If it stops on missing config it names the variable. Fix and re-run;
       it's safe to run repeatedly.
 
-## 7. Verify on the live domain
+## 8. Verify on the live domain
 
 - [ ] `https://shop.nexfixtech.com` loads, NexFix logo and wordmark.
 - [ ] `https://shop.nexfixtech.com/api/health` returns `{"status":"ok"}`.
@@ -134,8 +173,15 @@ where they bite.
 - [ ] A test payment in Stripe test mode: checkout redirects back to the new
       domain, the webhook fires, the item shows Sold, and both the email and
       the Pushover alert arrive.
+- [ ] **Send Request**: on `/services`, go through one of the three windows
+      to the phone number and press Done. A "Request: …" push arrives. Do
+      the same once from `/contact` ("Request: Contact").
+- [ ] **Packages**: add one real tracking number (it uses one of the month's
+      free registrations). It should show a status within a minute — that
+      comes from Shippo's reply — and update on its own after the next scan.
+      If it says "Not tracked", the reason is in the row.
 
-## 8. Passkeys — only once the domain is final
+## 9. Passkeys — only once the domain is final
 
 - [ ] Confirm the hostname is settled. Changing it again after enrolment
       means doing every device over.
@@ -149,7 +195,7 @@ where they bite.
       three days anyway, and passkeys are origin-bound. Both files are
       created empty on first boot.
 
-## 9. Later — the email domain move
+## 10. Later — the email domain move
 
 Not part of the cutover. Its own change, when `nexfixtech.com` is settled
 and Cloudflare Email Routing is configured there.
