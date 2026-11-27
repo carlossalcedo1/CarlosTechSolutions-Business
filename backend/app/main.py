@@ -12,7 +12,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .catalog import load_catalog
@@ -20,10 +20,18 @@ from .codes import CodeStore, normalize_code
 from .config import Settings, get_settings
 from .emails import buyer_confirmation, sale_alert, sale_push
 from .mailer import send_email
-from .notifier import send_push
+from .login_codes import LoginCodeStore, normalize_username
+from .notifier import PushError, send_push, send_push_strict
+from .orders import OrderStore, order_from_session
+from .passkeys import PasskeyStore
 from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
 from .schemas import (
+    AdminLoginRequest,
+    AdminMeResponse,
+    AdminPasskeyRequest,
+    AdminUser,
+    AdminVerifyRequest,
     CheckoutRequest,
     CheckoutResponse,
     CodeLookupResponse,
@@ -33,6 +41,7 @@ from .schemas import (
     SubscribeRequest,
     TradeInRequest,
 )
+from .sessions import COOKIE_NAME, SessionStore
 from .sold_store import SoldStore
 
 logger = logging.getLogger("app.main")
@@ -48,6 +57,14 @@ _form_limiter = RateLimiter(max_requests=5, window_seconds=60)
 # codes before they expire.
 _code_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
+# Admin sign-in, deliberately the tightest budget in the file. It guards two
+# different things at once: the login route answers whether a username is an
+# admin, so an open budget there is a free list of who to target; and the
+# verify route is the only thing between a guesser and a 6-digit code. Five
+# a minute is unmissable for a real person typing a code off their phone and
+# nowhere near enough to sweep anything.
+_admin_limiter = RateLimiter(max_requests=5, window_seconds=60)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -59,6 +76,10 @@ async def lifespan(app: FastAPI):
     app.state.catalog = {item.id: item for item in items}
     app.state.sold_store = SoldStore(settings.sold_state_path)
     app.state.code_store = CodeStore(settings.codes_path)
+    app.state.login_code_store = LoginCodeStore(settings.login_codes_path)
+    app.state.passkey_store = PasskeyStore(settings.passkeys_path)
+    app.state.session_store = SessionStore(settings.sessions_path)
+    app.state.order_store = OrderStore(settings.orders_path)
     logger.info("Loaded %d catalog items", len(items))
     yield
 
@@ -195,6 +216,19 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
         if item is None:
             logger.warning("checkout.session.completed with unknown item_id=%r code=%r", item_id, code)
         else:
+            # Kept for the admin panel's Orders tab. Wrapped for the same
+            # reason as the push further down: the sale is already recorded
+            # at this point and mark_processed() hasn't run, so anything that
+            # escapes is a 500, a Stripe retry, and the same sale counted
+            # twice. A missing row in the Orders tab is the acceptable
+            # failure — the sale-alert email still has everything needed to
+            # ship. record() is a no-op for an order it already has, so a
+            # genuine retry doesn't reset one you've marked shipped either.
+            try:
+                request.app.state.order_store.record(order_from_session(session, item, code))
+            except Exception:
+                logger.exception("Couldn't record the order for session %r", session.get("id"))
+
             buyer_email = (session.get("customer_details") or {}).get("email")
             if buyer_email:
                 subject, body_html, body_text = buyer_confirmation(
@@ -325,6 +359,206 @@ def trade_in(body: TradeInRequest, request: Request, settings: Settings = Depend
             html="<p>" + "</p><p>".join(lines) + "</p>",
             reply_to=body.email,
         )
+    return OkResponse()
+
+
+@app.post("/api/admin/login", response_model=OkResponse)
+def admin_login(
+    body: AdminLoginRequest, request: Request, settings: Settings = Depends(get_settings)
+):
+    """Step one of admin sign-in: push a one-time code to the admin's phone.
+
+    This route tells an anonymous caller whether a username is an admin,
+    which is a deliberate choice and not an oversight — it's what makes the
+    form usable, and the set of names is small and private. _admin_limiter
+    is what keeps that from being an enumerable list.
+    """
+    _admin_limiter.check(client_ip(request))
+
+    username = normalize_username(body.username)
+    # Raises on a malformed ADMIN_USERNAMES rather than admitting the wrong
+    # person — see Settings.admin_allowlist. A 500 here means the env is
+    # broken, which is the operator's problem and not the caller's.
+    try:
+        allowlist = settings.admin_allowlist
+    except ValueError:
+        logger.exception("ADMIN_USERNAMES is malformed — refusing all admin logins")
+        raise HTTPException(status_code=500, detail="Admin sign-in is misconfigured.")
+
+    if username not in allowlist:
+        raise HTTPException(status_code=400, detail="Username has not been registered.")
+
+    code = request.app.state.login_code_store.issue(username)
+
+    # send_push_strict, not send_push: the quiet one would let this return
+    # "sent" for a code that never left the building, and the whole point of
+    # the screen the user is looking at is that a code is on its way.
+    try:
+        send_push_strict(
+            settings,
+            title="NexFix admin sign-in",
+            message=f"Your sign-in code is {code}. It expires in 10 minutes.",
+            # High priority: you are standing at a keyboard waiting for it,
+            # so this is the one push in the app that should ignore a quiet
+            # hours schedule.
+            priority=1,
+            user_key=allowlist[username] or None,
+        )
+    except PushError:
+        logger.exception("Could not push a sign-in code for %s", username)
+        raise HTTPException(
+            status_code=503,
+            detail="Couldn't send the code right now. Try again in a moment.",
+        )
+
+    return OkResponse()
+
+
+@app.post("/api/admin/passkey/begin", response_model=OkResponse)
+def admin_passkey_begin(
+    body: AdminPasskeyRequest, request: Request, settings: Settings = Depends(get_settings)
+):
+    """Start a passkey sign-in, if there's a passkey to start it with.
+
+    Today this only ever refuses, because nothing enrols a passkey yet —
+    that's a button in the admin panel's settings, and there's no admin
+    panel. The refusal is the real, correct answer rather than a stub: no
+    credential on file genuinely means you cannot sign in this way.
+
+    "Not enrolled." is also the answer for a username that isn't an admin
+    at all. Deliberately: /api/admin/login already has to distinguish those
+    two cases to be usable, but this route doesn't, so it gives away less.
+    """
+    _admin_limiter.check(client_ip(request))
+
+    username = normalize_username(body.username)
+    try:
+        allowlist = settings.admin_allowlist
+    except ValueError:
+        logger.exception("ADMIN_USERNAMES is malformed — refusing all admin logins")
+        raise HTTPException(status_code=500, detail="Admin sign-in is misconfigured.")
+
+    if username not in allowlist or not request.app.state.passkey_store.has_credential(
+        username
+    ):
+        raise HTTPException(status_code=400, detail="Not enrolled.")
+
+    # Unreachable until enrolment exists. When it does, this is where the
+    # WebAuthn ceremony starts: build a challenge, store it against the
+    # username with a short expiry the way login_codes.py does, and return
+    # it with the allowed credential ids for the browser to sign.
+    raise HTTPException(
+        status_code=501,
+        detail="Passkey sign-in isn't finished yet. Use a confirmation code.",
+    )
+
+
+@app.post("/api/admin/verify", response_model=OkResponse)
+def admin_verify(
+    body: AdminVerifyRequest,
+    request: Request,
+    response: Response,
+    settings: Settings = Depends(get_settings),
+):
+    """Step two: trade the pushed code for a session."""
+    _admin_limiter.check(client_ip(request))
+
+    if not request.app.state.login_code_store.verify(body.username, body.code):
+        # One message for wrong, expired, already-used and too-many-tries.
+        # Telling them which would hand a guesser a progress bar.
+        raise HTTPException(status_code=400, detail="That code isn't valid. Request a new one.")
+
+    token = request.app.state.session_store.create(body.username)
+    _set_session_cookie(response, token, settings)
+    return OkResponse()
+
+
+def _set_session_cookie(response: Response, token: str, settings: Settings) -> None:
+    """The token never touches JavaScript.
+
+    httponly is the whole point: a token in localStorage is readable by any
+    script that manages to run on the page, so one XSS is one stolen admin
+    session. A cookie the browser attaches automatically and JS can't read
+    takes that off the table.
+
+    samesite=lax rather than strict: strict would mean following a link
+    into the panel from anywhere else lands you signed out, which reads as
+    a bug. Lax still blocks the cross-site POSTs that CSRF needs.
+
+    max_age is left off on purpose, making this a session cookie that dies
+    with the browser. The real lifetime lives server-side in sessions.py,
+    where it can actually be revoked; a long-lived cookie would just be a
+    second, unrevokable copy of that decision.
+    """
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        httponly=True,
+        secure=settings.cookies_require_https,
+        samesite="lax",
+        path="/",
+    )
+
+
+def current_admin(request: Request) -> str | None:
+    """The signed-in admin's username, or None. Never raises."""
+    token = request.cookies.get(COOKIE_NAME)
+    return request.app.state.session_store.lookup(token)
+
+
+def require_admin(request: Request) -> str:
+    """Dependency for admin-only routes: 401 unless signed in.
+
+    Nothing uses it yet — the panel's routes don't exist. It lives here so
+    those routes are written with a guard from the first line rather than
+    having one retrofitted, which is how endpoints end up public by
+    accident.
+    """
+    username = current_admin(request)
+    if username is None:
+        raise HTTPException(status_code=401, detail="Sign in to continue.")
+    return username
+
+
+# Inventory management for the admin panel. require_admin goes on the whole
+# router here rather than on each route inside it, so a route added there
+# later is guarded whether or not whoever writes it remembers to.
+from .admin_codes import public_router as code_photos_router  # noqa: E402
+from .admin_codes import router as admin_codes_router  # noqa: E402
+from .admin_inventory import router as admin_inventory_router  # noqa: E402
+from .admin_orders import router as admin_orders_router  # noqa: E402
+
+for _router in (admin_inventory_router, admin_orders_router, admin_codes_router):
+    app.include_router(_router, dependencies=[Depends(require_admin)])
+
+# The one admin-made thing that's public: a code's photos, which the buyer
+# holding the code has to be able to load. See admin_codes.py.
+app.include_router(code_photos_router)
+
+
+@app.get("/api/admin/me", response_model=AdminMeResponse)
+def admin_me(request: Request):
+    """Who, if anyone, is signed in on this browser.
+
+    200 with a null user when nobody is, rather than a 401: every page load
+    asks this, and "not signed in" is the ordinary answer on a shop front,
+    not an error worth logging.
+    """
+    username = current_admin(request)
+    return AdminMeResponse(user=AdminUser(username=username) if username else None)
+
+
+@app.post("/api/admin/logout", response_model=OkResponse)
+def admin_logout(request: Request, response: Response, settings: Settings = Depends(get_settings)):
+    """Sign out this device.
+
+    The row is deleted server-side first, so the session is dead even if
+    the browser ignores the cookie instruction. Clearing the cookie is
+    tidiness, not the mechanism — which is the difference between this and
+    a JWT, where deleting the client's copy is all you can do.
+    """
+    request.app.state.session_store.revoke(request.cookies.get(COOKIE_NAME))
+    response.delete_cookie(COOKIE_NAME, path="/")
     return OkResponse()
 
 

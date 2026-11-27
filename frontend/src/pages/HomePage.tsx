@@ -1,19 +1,15 @@
-import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { items } from "../data/items";
 import {
   CATEGORIES,
   CONTACT_PHONE,
+  CONTACT_PHONE_E164,
   EBAY_PROFILE_URL,
   FACEBOOK_MARKETPLACE_URL,
 } from "../lib/constants";
-import { ProductCard } from "../components/ProductCard";
 import { PhotoCarousel } from "../components/PhotoCarousel";
-import { CleanWayMark } from "../components/CleanWayMark";
+import { MissionMark } from "../components/MissionMark";
 import { ProjectsSection } from "../components/ProjectsSection";
 import { OtherMarketplaces } from "../components/OtherMarketplaces";
-import { subscribe, ApiError } from "../lib/api";
-import { useSoldItemIds } from "../lib/useSoldItemIds";
 
 // Four promises shown in the 2x2 grid. The fourth is an autofilled
 // placeholder — swap in whatever you actually want to promise.
@@ -28,7 +24,7 @@ const PROMISES = [
   },
   {
     title: "All price points available",
-    body: "From budget backups under $100 to current-generation flagships — there's something at every budget.",
+    body: "From budget backups under $100 to current-generation flagships — there's something at every price point.",
   },
   {
     title: "Clear transparency",
@@ -54,38 +50,6 @@ const sectionHeading =
   "text-[clamp(1.75rem,4vw,2.75rem)] leading-[1.05] font-semibold tracking-tight";
 
 export function HomePage() {
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-  const [subscribing, setSubscribing] = useState(false);
-  const [subscribeError, setSubscribeError] = useState<string | null>(null);
-
-  const soldIds = useSoldItemIds();
-  // Sold items skip this teaser entirely rather than showing a badge here —
-  // it's a "what's new" highlight strip, not the full catalog, so a sold
-  // item just falls out and the next one takes its place. The full catalog
-  // (ShopPage) still shows sold items with a badge instead of removing them.
-  const recentlyListed = [...items]
-    .filter((item) => !soldIds.has(item.id))
-    .sort((a, b) => (a.dateAdded < b.dateAdded ? 1 : -1))
-    .slice(0, 4);
-
-  async function handleSubscribe(e: FormEvent) {
-    e.preventDefault();
-    if (subscribing) return;
-    setSubscribeError(null);
-    setSubscribing(true);
-    try {
-      await subscribe(email);
-      setSubscribed(true);
-    } catch (err) {
-      setSubscribeError(
-        err instanceof ApiError ? err.message : "Something went wrong — try again in a moment.",
-      );
-    } finally {
-      setSubscribing(false);
-    }
-  }
-
   return (
     <div>
       {/* Hero — cream. The headline uses clamp() so it scales with the
@@ -102,21 +66,46 @@ export function HomePage() {
               actually move anything) plus the h1's mt-8/mt-12 below give a
               controlled 1:2 split of the header-to-headline gap: roughly a
               third above this callout, two-thirds between it and the h1. */}
-          <a
-            href="#projects"
-            className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs text-ink transition hover:border-ink"
-          >
-            <span className="font-bold">Looking for these?</span> PromptWorks &middot; RhinoTrade
-            <span aria-hidden>&rarr;</span>
-          </a>
+          {/* Both pills on one row. The contact one used to be a tel: anchor
+              nested inside an outer anchor, which isn't legal HTML — browsers
+              split it into two sibling links, so the outer pill and the number
+              went to different places. It's a single <a> now. */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <a
+              href="#projects"
+              className="inline-flex items-center gap-1.5 rounded-full border border-hairline bg-white px-4 py-1.5 text-xs text-ink transition hover:border-ink"
+            >
+              <span className="font-bold">Looking for these?</span> PromptWorks &middot; RhinoTrade
+              <span aria-hidden>&rarr;</span>
+            </a>
+
+            <a
+              href={`sms:${CONTACT_PHONE_E164}`}
+              className="group inline-flex flex-wrap items-center justify-center rounded-full border border-brand-bright bg-white px-4 py-1.5 text-xs text-brand transition hover:border-brand hover:bg-brand/5 sm:flex-nowrap"
+            >
+              <span className="font-bold">Contact me directly for latest offerings</span>
+              {/* The number unfurls on hover. Its left padding lives inside the
+                  clipped box rather than as a flex gap, so there's no ghost
+                  space sitting there while it's collapsed.
+                  The clipping is sm-and-up only. Phones have no hover, so the
+                  number has to be visible there anyway — and leaving
+                  overflow-hidden on at that width cropped it to "(305) 763-25"
+                  once the label wrapped and ate the room. Below sm the pill
+                  wraps instead and the number sits on its own line. */}
+              <span className="pl-1.5 font-medium whitespace-nowrap transition-all duration-300 sm:max-w-0 sm:overflow-hidden sm:pl-0 sm:group-hover:max-w-[11rem] sm:group-hover:pl-1.5">
+                {CONTACT_PHONE}
+              </span>
+            </a>
+          </div>
 
           <h1 className="mt-8 text-[clamp(2rem,6.5vw,4.25rem)] leading-[1.02] font-extrabold tracking-tight text-ink sm:mt-12">
             Your one stop shop for all your tech needs
           </h1>
-          {/* Placeholder description — rewrite this in your own voice. */}
-          <p className="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-muted sm:text-xl">
-            New, used, and refurbished phones, tablets, and computers — tested, unlocked,
-            and priced to move. We also buy, trade, and repair.
+          {/* max-w-3xl, not the 2xl the rest of the page uses: this line wants
+              679px and 2xl gives 672, so it was wrapping a lone "time." onto a
+              second line. */}
+          <p className="mx-auto mt-8 max-w-3xl text-lg leading-relaxed text-muted sm:text-xl">
+            Tech repair and resale, done right: fair prices and fast turnarounds, every time!
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -133,12 +122,6 @@ export function HomePage() {
               View services
             </Link>
           </div>
-          <p className="mt-4 text-xs text-red-600">
-            *Inventory may not be up to date, for latest offerings contact me directly at{" "}
-            <a href={`tel:${CONTACT_PHONE}`} className="font-medium whitespace-nowrap underline">
-              {CONTACT_PHONE}
-            </a>
-          </p>
 
           {/* Link-out cards rather than embedded reviews — neither eBay nor
               Facebook Marketplace has a public embed widget for profile
@@ -247,63 +230,6 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Recently listed */}
-      <section className="bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <h2 className="text-2xl font-bold tracking-tight text-ink">Recently listed</h2>
-          {recentlyListed.length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {recentlyListed.map((item) => (
-                <ProductCard key={item.id} item={item} />
-              ))}
-            </div>
-          ) : (
-            <p className="mt-6 text-muted">
-              New inventory is on the way — check back soon, or subscribe below to get an email
-              when it lands.
-            </p>
-          )}
-
-          {/* New-listing email signup */}
-          <div className="mx-auto mt-12 max-w-xl rounded-2xl border border-hairline bg-surface px-6 py-8 text-center">
-            <p className="text-sm leading-relaxed text-muted">
-              New inventory lands all the time. Want an email when something you&apos;re looking
-              for gets listed? Subscribe below — just new listings, no spam.
-            </p>
-
-            {subscribed ? (
-              <p className="mt-5 text-sm font-medium text-ink">
-                You&apos;re on the list — we&apos;ll email you when new items land.
-              </p>
-            ) : (
-              <form
-                onSubmit={handleSubscribe}
-                className="mt-5 flex flex-col items-center justify-center gap-2 sm:flex-row"
-              >
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  className="w-full rounded-full border border-hairline bg-white px-4 py-2.5 text-sm outline-none focus:border-brand sm:w-64"
-                />
-                <button
-                  type="submit"
-                  disabled={subscribing}
-                  className="w-full rounded-full bg-ink px-6 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-                >
-                  {subscribing ? "Subscribing…" : "Subscribe"}
-                </button>
-              </form>
-            )}
-            {subscribeError && (
-              <p className="mt-3 text-sm text-red-700">{subscribeError}</p>
-            )}
-          </div>
-        </div>
-      </section>
-
       {/* Other marketplaces — same split as "Why buy from us": heading on the
           left, 2x2 hairline grid on the right. */}
       <section className="border-t border-hairline bg-white">
@@ -326,15 +252,15 @@ export function HomePage() {
 
       {/* Other projects — replaces the old About Carlos teaser. Shared with
           the Services page via ProjectsSection. */}
-      <ProjectsSection id="projects" />
+      
 
-      {/* The Clean Way — full-bleed dark section, centered */}
+      {/* Our Mission — full-bleed dark section, centered */}
       <section className="bg-night text-white">
         <div className="mx-auto max-w-3xl px-6 py-24 text-center">
           <p className={`${eyebrow} text-white/50`}>How we source</p>
           <h2 className={`${sectionHeading} mt-4 flex items-center justify-center gap-3`}>
-            <CleanWayMark className="h-[0.85em] w-[0.85em]" />
-            The Clean Way
+            <MissionMark className="h-[0.85em] w-[0.85em]" />
+            Our Mission
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/70">
             Devices sourced from people who no longer need them, plus iCloud/MDM-locked units
@@ -342,7 +268,7 @@ export function HomePage() {
             and test every one before it&apos;s listed.
           </p>
           <Link
-            to="/about#clean-way"
+            to="/about#our-mission"
             className="mt-9 inline-block rounded-full bg-white px-7 py-3 text-[15px] font-medium text-night hover:opacity-90"
           >
             Learn about our process
@@ -400,6 +326,9 @@ export function HomePage() {
           </Link>
         </div>
       </section>
+
+      <ProjectsSection id="projects" />
+
     </div>
   );
 }

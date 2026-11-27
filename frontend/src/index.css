@@ -7,8 +7,15 @@
   instead of hardcoded hex values scattered around.
 */
 @theme {
-  --color-brand: #1d4ed8;
-  --color-brand-dark: #1e3a8a;
+  /* Orange, from the NexFix mark. Two tokens rather than one because the
+     mark's own #f26b0f only manages 3:1 against white — fine for a border,
+     but it can't legally carry 12px text or white-on-brand button labels.
+     --color-brand is that orange darkened until it clears AA at 5.2:1, and
+     --color-brand-bright is the logo colour itself, for borders and other
+     non-text accents where the contrast rules don't apply. */
+  --color-brand: #c2410c;
+  --color-brand-dark: #9a3412;
+  --color-brand-bright: #f26b0f;
   --color-ink: #111827;
   --color-muted: #6b7280;
   /* Near-black used for full-bleed dark sections that break up the

@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
+import { Logo } from "./Logo";
 import { INQUIRY_EMAIL, CONTACT_PHONE, EBAY_PROFILE_URL } from "../lib/constants";
-import { CleanWayMark } from "./CleanWayMark";
+import { MissionMark } from "./MissionMark";
 
 type FooterLink = {
   label: string;
   to: string;
-  /** Renders the leaf mark before the label (used for The Clean Way). */
+  /** Renders the leaf mark before the label (used for Our Mission). */
   mark?: boolean;
 };
 
@@ -36,7 +37,7 @@ const COLUMNS: Array<{ heading: string; links: FooterLink[] }> = [
     heading: "Company",
     links: [
       { label: "About us", to: "/about" },
-      { label: "The Clean Way", to: "/about#clean-way", mark: true },
+      { label: "Our Mission", to: "/about#our-mission", mark: true },
       { label: "Help center", to: "/help" },
       { label: "Contact", to: "/contact" },
     ],
@@ -50,10 +51,9 @@ export function Footer() {
         {/* Brand block */}
         <div>
           <Link to="/" className="flex items-center gap-3">
-            {/* Same placeholder as the header — see Header.tsx's comment.
-                Swap /public/logo.svg for the real mark when it's ready. */}
-            <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
-            <span className="text-xl font-bold tracking-tight text-ink">CarlosTechSolutions</span>
+            {/* Same mark as the header — see Header.tsx's comment. */}
+            <Logo className="h-[25px] w-[25px]" />
+            <span className="text-xl font-bold tracking-tight text-ink">NexFix</span>
           </Link>
 
           <p className="mt-5 max-w-xs text-[15px] leading-relaxed text-muted">
@@ -129,7 +129,7 @@ export function Footer() {
               {column.links.map((link) => (
                 <li key={link.label}>
                   <Link to={link.to} className="inline-flex items-center gap-1.5 hover:text-ink">
-                    {link.mark && <CleanWayMark className="h-4 w-4" />}
+                    {link.mark && <MissionMark className="h-4 w-4" />}
                     {link.label}
                   </Link>
                 </li>
@@ -141,7 +141,7 @@ export function Footer() {
 
       <div className="border-t border-hairline">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 py-5 text-xs text-muted sm:flex-row sm:justify-between">
-          <p>&copy; {new Date().getFullYear()} CarlosTechSolutions. Ships nationwide.</p>
+          <p>&copy; {new Date().getFullYear()} NexFix. Ships nationwide.</p>
           <div className="flex gap-4">
             <Link to="/terms" className="hover:text-ink">
               Terms of service

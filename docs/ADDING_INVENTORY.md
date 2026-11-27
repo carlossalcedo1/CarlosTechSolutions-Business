@@ -2,6 +2,24 @@
 
 How to put a device on the site. Takes about a minute per item.
 
+## Two ways in
+
+- **The admin panel** — `/admin/list`, signed in. Create, Edit and Delete
+  listings from a phone, with photos straight from the camera roll, then
+  Deploy. It runs the same code as the scripts below (`backend/app/inventory.py`),
+  so a listing made either way is identical.
+- **The scripts** — `add_item.py`, `sold_item.py` and friends, below. Still
+  the way to do it over SSH.
+
+Either way it writes the same two places — `scripts/items.json` and
+`frontend/public/items/` — and nothing reaches the shop until you deploy.
+
+**The panel only edits where the repo is.** On the machine you run the API
+from a checkout on, it works fully, Deploy included. On the NUC the API runs
+inside a Docker container that has no copy of the repo, so Create, Edit,
+Delete and Deploy all switch themselves off there and say why, rather than
+writing to the container's throwaway copy of the catalog.
+
 ## One-time setup
 
 ```bash
@@ -131,7 +149,17 @@ list them in the item's `"images"` in `scripts/items.json`, and deploy.
 ## Code-only listings (private sales)
 
 For a buyer you're dealing with elsewhere (eBay, Marketplace, text) who
-should pay through the site instead. Run on the server:
+should pay through the site instead.
+
+**Easiest: the admin panel's Codes tab.** Same fields as the script below,
+photos from your phone, and the code is copied to your clipboard the moment
+it exists. Unlike the List tab it **works on the live server** — codes and
+their photos live on the API's data volume, so there's nothing to deploy.
+Photos for panel-made codes are kept beside `codes.json` and served from
+`/api/code-photos/…`; the script's go into `frontend/public/items/` as
+before. The product page doesn't care which.
+
+Or run the script on the server:
 
 ```bash
 python3 scripts/gen_code.py              # create: same prompts as add_item, minus category
@@ -153,7 +181,12 @@ at the end, for any other changes you have waiting).
 
 ## Fixing or removing an item
 
-There's no CLI for this yet. Both live in `scripts/items.json`:
+Easiest from the admin panel: **Edit Listing** changes one field at a time
+with the same validation as adding, and **Delete Listing** marks it sold —
+logged to `backend/data/sold_items.json` with the date, same as
+`sold_item.py`, rather than erased.
+
+By hand, both live in `scripts/items.json`:
 
 - **Change a price or a typo** — edit the entry directly. Remember prices are
   in **cents**: `$749.99` is `74999`

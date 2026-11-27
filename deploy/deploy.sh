@@ -90,6 +90,13 @@ if [ "$DO_BACKEND" = "1" ]; then
 			warn "$var is empty — that notification path will silently do nothing."
 	done
 
+	# A warning rather than a hard failure: blank is a legitimate state, and
+	# means admin sign-in is simply switched off. But it's worth saying out
+	# loud, because the failure it causes looks like a bug — the sign-in page
+	# loads fine and tells you your own username isn't registered.
+	grep -qE "^ADMIN_USERNAMES=.+" "$DEPLOY_DIR/.env" || \
+		warn "ADMIN_USERNAMES is empty — nobody will be able to sign in to the admin panel."
+
 	echo "Configuration looks complete."
 fi
 

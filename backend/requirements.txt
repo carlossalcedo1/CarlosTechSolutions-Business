@@ -7,6 +7,9 @@ pillow-heif>=0.18
 # API service (Phase 1)
 fastapi>=0.115
 uvicorn[standard]>=0.30
+# FastAPI's UploadFile/Form need it. Only the admin panel's photo upload
+# uses multipart today; everything else is JSON.
+python-multipart>=0.0.9
 stripe>=10.12
 resend>=2.4
 # zoneinfo needs a tz database and python:*-slim ships none, so ZoneInfo()

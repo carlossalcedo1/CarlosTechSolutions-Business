@@ -6,7 +6,7 @@ import { ProjectsSplit } from "./ProjectsSplit";
 // pages change together.
 export function ProjectsSection({ id }: { id?: string }) {
   return (
-    <section id={id} className="scroll-mt-24 bg-surface">
+    <section id={id} className="scroll-mt-24 bg-white">
       <div className="mx-auto max-w-6xl px-6 py-20">
         <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">Services</p>
         <h2 className="mt-4 text-[clamp(1.75rem,4vw,2.75rem)] leading-[1.05] font-semibold tracking-tight text-ink">

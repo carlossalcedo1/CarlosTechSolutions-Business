@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 // React Router (unlike a full page load) doesn't reset scroll position
 // between route changes on its own. This restores that default: top of
 // the page on a normal navigation, or scroll-to-element when a link
-// carries a hash (e.g. /about#clean-way from the header/footer).
+// carries a hash (e.g. /about#our-mission from the header/footer).
 export function ScrollToTop() {
   const { pathname, hash } = useLocation();
 

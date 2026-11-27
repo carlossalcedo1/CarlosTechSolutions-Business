@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 // Illustrations, not screenshots: hand-drawn SVG versions of the two lock
-// states The Clean Way talks about, so the About page can show what "locked"
+// states Our Mission talks about, so the About page can show what "locked"
 // actually looks like. Swap in real photos of your own devices any time.
 
 const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";

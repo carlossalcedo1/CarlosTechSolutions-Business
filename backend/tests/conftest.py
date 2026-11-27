@@ -20,10 +20,15 @@ import datetime as dt
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app import admin_orders as admin_orders_module
 from backend.app import main as main_module
 from backend.app.codes import CodeStore
 from backend.app.config import Settings, get_settings
 from backend.app.models import Item
+from backend.app.login_codes import LoginCodeStore
+from backend.app.orders import OrderStore
+from backend.app.passkeys import PasskeyStore
+from backend.app.sessions import SessionStore
 from backend.app.sold_store import SoldStore
 from backend.tests.helpers import make_item
 
@@ -54,6 +59,23 @@ def settings(tmp_path) -> Settings:
         sold_state_path=tmp_path / "sold_state.json",
         subscribers_path=tmp_path / "subscribers.json",
         codes_path=tmp_path / "codes.json",
+        login_codes_path=tmp_path / "login_codes.json",
+        passkeys_path=tmp_path / "passkeys.json",
+        sessions_path=tmp_path / "sessions.json",
+        orders_path=tmp_path / "orders.json",
+        code_photos_dir=tmp_path / "code_photos",
+        # Inventory editing defaults to the repo's real items.json, photos
+        # and sold log. Every one of these has to be redirected, or a test
+        # that creates a listing writes it into the developer's actual
+        # catalog. deploy_script points at a file that's never executed —
+        # Popen is patched wherever a test reaches the deploy route.
+        catalog_path=tmp_path / "items.json",
+        public_items_dir=tmp_path / "frontend" / "public" / "items",
+        sold_items_path=tmp_path / "sold_items.json",
+        deploy_script=tmp_path / "deploy" / "deploy.sh",
+        deploy_state_path=tmp_path / "deploy_state.json",
+        deploy_log_path=tmp_path / "deploy.log",
+        admin_usernames="cmsal06",
     )
 
 
@@ -65,6 +87,26 @@ def sold_store(settings) -> SoldStore:
 @pytest.fixture
 def code_store(settings) -> CodeStore:
     return CodeStore(settings.codes_path)
+
+
+@pytest.fixture
+def login_code_store(settings) -> LoginCodeStore:
+    return LoginCodeStore(settings.login_codes_path)
+
+
+@pytest.fixture
+def passkey_store(settings) -> PasskeyStore:
+    return PasskeyStore(settings.passkeys_path)
+
+
+@pytest.fixture
+def session_store(settings) -> SessionStore:
+    return SessionStore(settings.sessions_path)
+
+
+@pytest.fixture
+def order_store(settings) -> OrderStore:
+    return OrderStore(settings.orders_path)
 
 
 @pytest.fixture
@@ -83,11 +125,19 @@ def _reset_rate_limiters():
     counters would leak between tests and the 6th test to send a form would
     start failing with a 429. Cleared before and after each test.
     """
-    main_module._form_limiter._hits.clear()
-    main_module._code_limiter._hits.clear()
+    for limiter in (
+        main_module._form_limiter,
+        main_module._code_limiter,
+        main_module._admin_limiter,
+    ):
+        limiter._hits.clear()
     yield
-    main_module._form_limiter._hits.clear()
-    main_module._code_limiter._hits.clear()
+    for limiter in (
+        main_module._form_limiter,
+        main_module._code_limiter,
+        main_module._admin_limiter,
+    ):
+        limiter._hits.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -108,8 +158,17 @@ def sent(monkeypatch) -> dict[str, list]:
     def fake_send_push(settings, **kwargs):
         captured["pushes"].append(kwargs)
 
+    def fake_send_push_strict(settings, **kwargs):
+        # Captured into the same list as the quiet one: tests care about
+        # what the app tried to push, not which door it went out of.
+        captured["pushes"].append(kwargs)
+
     monkeypatch.setattr(main_module, "send_email", fake_send_email)
     monkeypatch.setattr(main_module, "send_push", fake_send_push)
+    monkeypatch.setattr(main_module, "send_push_strict", fake_send_push_strict)
+    # The Orders tab emails buyers when tracking is added. Imported by name
+    # there, so it's patched there — patching mailer would miss it.
+    monkeypatch.setattr(admin_orders_module, "send_email", fake_send_email)
     return captured
 
 
@@ -159,7 +218,16 @@ def webhook(monkeypatch):
 
 
 @pytest.fixture
-def client(settings, catalog, sold_store, code_store):
+def client(
+    settings,
+    catalog,
+    sold_store,
+    code_store,
+    login_code_store,
+    passkey_store,
+    session_store,
+    order_store,
+):
     """TestClient with the app's startup state swapped for the fixtures.
 
     The override has to happen inside the context manager: `with
@@ -173,5 +241,15 @@ def client(settings, catalog, sold_store, code_store):
         main_module.app.state.catalog = catalog
         main_module.app.state.sold_store = sold_store
         main_module.app.state.code_store = code_store
+        # These two were missing when the admin routes landed, which meant
+        # every admin test was reading and writing the repo's real
+        # backend/data/ files instead of tmp_path. Harmless-looking, since
+        # the tests still passed — but they were leaving live sign-in codes
+        # on the developer's machine, and a leftover one could have made a
+        # later test pass for the wrong reason.
+        main_module.app.state.login_code_store = login_code_store
+        main_module.app.state.passkey_store = passkey_store
+        main_module.app.state.session_store = session_store
+        main_module.app.state.order_store = order_store
         yield test_client
     main_module.app.dependency_overrides.clear()

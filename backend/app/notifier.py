@@ -63,15 +63,70 @@ def send_push(
     be parsed as markup, so only a caller that escapes its interpolations
     should ask for it. The title is never HTML either way.
     """
-    if not (settings.pushover_token and settings.pushover_user_key):
+    try:
+        send_push_strict(
+            settings,
+            title=title,
+            message=message,
+            url=url,
+            url_title=url_title,
+            priority=priority,
+            html=html,
+        )
+    except PushNotConfigured:
         # Mirrors mailer.py's missing-key behaviour: let the app run and be
         # tested before the Pushover keys exist instead of crashing.
         logger.warning("Pushover not configured — not pushing %r", title)
-        return
+    except PushFailed as exc:
+        logger.error("Pushover failed for %r: %s", title, exc)
+    except Exception:
+        logger.exception("Pushover request failed for %r", title)
+
+
+class PushError(Exception):
+    """Base for the two ways send_push_strict can refuse to have sent."""
+
+
+class PushNotConfigured(PushError):
+    """No token/user key — nothing was attempted."""
+
+
+class PushFailed(PushError):
+    """Pushover was asked and didn't accept it."""
+
+
+def send_push_strict(
+    settings: Settings,
+    *,
+    title: str,
+    message: str,
+    url: str | None = None,
+    url_title: str | None = None,
+    priority: int = 0,
+    user_key: str | None = None,
+    html: bool = False,
+) -> None:
+    """Send one push, raising if it didn't go.
+
+    The counterpart to send_push above, which swallows everything. That's
+    right where it's used — inside the Stripe webhook, where raising would
+    hand Stripe a 500 and earn a retry of a sale already recorded — and
+    exactly wrong for an admin login code, where a swallowed failure means
+    telling someone to check a phone that will never buzz. Callers that
+    need to know pick this one; callers that genuinely don't care keep the
+    quiet one.
+
+    `user_key` overrides the configured one, because the admin allowlist
+    can carry a second admin's own key (see Settings.admin_allowlist) and
+    Pushover addresses a device, not a username.
+    """
+    user = user_key or settings.pushover_user_key
+    if not (settings.pushover_token and user):
+        raise PushNotConfigured("Pushover token or user key is not set")
 
     fields = {
         "token": settings.pushover_token,
-        "user": settings.pushover_user_key,
+        "user": user,
         "title": title[:_TITLE_LIMIT],
         "message": message[:_MESSAGE_LIMIT],
         "priority": str(priority),
@@ -93,12 +148,12 @@ def send_push(
     try:
         with urllib.request.urlopen(request, timeout=_TIMEOUT_SECONDS) as response:
             if response.status != 200:
-                logger.error("Pushover returned HTTP %s for %r", response.status, title)
+                raise PushFailed(f"Pushover returned HTTP {response.status}")
     except urllib.error.HTTPError as exc:
         # A 4xx here is a bad token or user key, and Pushover's body names
-        # the field it rejected — worth logging, since the alternative is
+        # the field it rejected — worth surfacing, since the alternative is
         # silently not getting alerts.
         body = exc.read()[:200].decode("utf-8", "replace")
-        logger.error("Pushover rejected %r: HTTP %s %s", title, exc.code, body)
-    except Exception:
-        logger.exception("Pushover request failed for %r", title)
+        raise PushFailed(f"HTTP {exc.code} {body}") from exc
+    except urllib.error.URLError as exc:
+        raise PushFailed(str(exc.reason)) from exc

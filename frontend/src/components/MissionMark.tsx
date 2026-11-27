@@ -1,11 +1,12 @@
-// Small leaf mark that sits beside "The Clean Way" everywhere the name
+// Small leaf mark that sits beside "Our Mission" everywhere the name
 // appears — header, footer, homepage section, About page — so the sourcing
-// story reads as one named thing across the site.
+// story reads as one named thing across the site. Renamed from
+// CleanWayMark with the section itself; the leaf artwork is unchanged.
 //
 // It draws with `currentColor`, so it picks up whatever text color it sits
 // in: muted grey in the header, white on the dark homepage section. Size it
 // with the className (em units keep it proportional inside headings).
-export function CleanWayMark({ className = "" }: { className?: string }) {
+export function MissionMark({ className = "" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
