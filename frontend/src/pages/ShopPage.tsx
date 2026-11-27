@@ -167,6 +167,52 @@ export function ShopPage() {
         </a>{" "}
         pages.
       </p>
+
+      {/* What each condition badge means. Names match the badges on the
+          cards exactly (CONDITIONS above), so a buyer can look from one to
+          the other — "A+ - Excellent", not "A condition". */}
+      <section
+        aria-labelledby="conditions-heading"
+        className="mt-6 rounded-3xl bg-black/[0.04] px-6 py-5 text-sm leading-relaxed text-ink"
+      >
+        <h2 id="conditions-heading" className="font-semibold">
+          What the conditions mean
+        </h2>
+        <dl className="mt-3 space-y-2">
+          <div>
+            <dt className="inline font-bold">New</dt>
+            <dd className="inline">
+              {" "}
+              — In its original box and never used, or opened only to inspect the contents and
+              verify that it works.
+            </dd>
+          </div>
+          <div>
+            <dt className="inline font-bold">A+ - Excellent</dt>
+            <dd className="inline">
+              {" "}
+              — Minor to no scuffs or scratches on the front glass, back glass or housing. Battery
+              health is guaranteed above 80%.
+            </dd>
+          </div>
+          <div>
+            <dt className="inline font-bold">B - Good</dt>
+            <dd className="inline">
+              {" "}
+              — Noticeable scuffs or scratches on the front glass, back glass or housing. Battery
+              health is guaranteed above 80%.
+            </dd>
+          </div>
+          <div>
+            <dt className="inline font-bold">C - Fair</dt>
+            <dd className="inline">
+              {" "}
+              — Noticeable scuffs or scratches on the front glass, back glass or housing, and may
+              include cracks — check the photos. Battery health may be below 80%.
+            </dd>
+          </div>
+        </dl>
+      </section>
     </div>
   );
 }
