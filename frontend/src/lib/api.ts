@@ -153,7 +153,7 @@ export function subscribe(email: string) {
 }
 
 /**
- * Step one of admin sign-in: push an 8-digit code to the admin's phone.
+ * Step one of admin sign-in: push a 6-digit code to the admin's phone.
  *
  *   POST /api/admin/login   { "username": "cmsal06" }
  *     200  { "ok": true }
@@ -172,10 +172,10 @@ export function requestAdminLoginCode(username: string) {
 /**
  * Step two: trade the code for a session — eventually.
  *
- *   POST /api/admin/verify  { "username": "cmsal06", "code": "04172905" }
+ *   POST /api/admin/verify  { "username": "cmsal06", "code": "041729" }
  *     200  { "ok": true }
  *     400  "That code isn't valid. Request a new one."
- *     422  code wasn't 8 digits (rejected before it costs an attempt)
+ *     422  code wasn't 6 digits (rejected before it costs an attempt)
  *
  * A 200 here means the code was real and has now been burned. It does NOT
  * mean anyone is signed in: the route returns a bare ok because there's no

@@ -127,7 +127,7 @@ where they bite.
 - [ ] `https://shop.nexfixtech.com/api/health` returns `{"status":"ok"}`.
 - [ ] Old domain redirects to the new one.
 - [ ] **Admin sign-in end to end**: username → push arrives on your phone →
-      8-digit code → signed in, header greets you. Then reload the page and
+      6-digit code → signed in, header greets you. Then reload the page and
       confirm you're still signed in. Then sign out.
 - [ ] Check the cookie in devtools: `HttpOnly` ✓, `Secure` ✓,
       `SameSite=Lax` ✓. `Secure` missing means `SITE_URL` isn't `https://`.

@@ -8,10 +8,10 @@ nothing. sold_store.py's docstring names the trigger to move to SQLite —
 concurrent writers or multiple replicas — and this is further from it than
 anything else in the app.
 
-The codes are 8 digits. That's 100 million values, which sounds ample and
-isn't on its own: the whole space is sweepable if an attacker gets
-unlimited, instant guesses. Three things make it safe, and all three have
-to stay:
+The codes are 6 digits — the same length every authenticator app uses, and
+quick to type off a lock-screen notification. That's a million values, so
+the whole space is trivially sweepable given unlimited, instant guesses.
+Three things make it safe, and all three have to stay:
 
 - one live code per username, deleted the moment it's used
 - ten-minute expiry
@@ -19,11 +19,18 @@ to stay:
 
 The per-IP rate limit on the verify route is a fourth, outside this file.
 
-Codes are stored as PBKDF2 hashes rather than plaintext. Against an
-attacker who can read this file that is a speed bump and not a vault — 10^8
-candidates is small — but it costs one line, and the file would otherwise
-be a list of live credentials sitting next to the sold-state data in a
-backup. The expiry is what actually bounds the damage.
+Together those cap a guesser at five tries per code: a 1-in-200,000 chance,
+and every fresh code they need buzzes the real admin's phone. That math is
+the whole defence, which is why the attempt cap and the expiry are pinned
+by tests rather than left as comments.
+
+Codes are stored as PBKDF2 hashes rather than plaintext. Worth being plain
+about what that buys at this length: very little against someone who can
+read this file. 10^6 candidates at ~100ms each is a day of one CPU core,
+and well under the ten-minute expiry spread across a GPU. It still keeps a
+backup of the data volume from being a list of live credentials at a
+glance, and it costs one line — but the expiry is what bounds the damage,
+and a leaked data volume is a bigger problem than these codes anyway.
 """
 
 from __future__ import annotations
@@ -36,12 +43,13 @@ import threading
 import time
 from pathlib import Path
 
-CODE_LENGTH = 8
+CODE_LENGTH = 6
 CODE_TTL_SECONDS = 10 * 60
 MAX_ATTEMPTS = 5
 
-# ~100ms per check on the NUC. Deliberate: it makes an offline sweep of the
-# 8-digit space cost real time, and a login is a once-a-session action where
+# ~100ms per check on the NUC. It slows an offline sweep of the 6-digit space
+# without stopping one (see the module docstring), and a login is a
+# once-a-session action where
 # nobody notices a tenth of a second. The verify route's rate limit is what
 # stops this being a CPU-burn lever.
 _PBKDF2_ROUNDS = 120_000
@@ -58,7 +66,7 @@ def normalize_username(username: str) -> str:
 
 
 def generate_code() -> str:
-    """A uniformly random 8-digit code, leading zeros included.
+    """A uniformly random 6-digit code, leading zeros included.
 
     randbelow, not randint on a shuffled alphabet or anything cleverer —
     this is the one place where a predictable value is the whole ballgame.

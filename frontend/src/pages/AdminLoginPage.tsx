@@ -10,7 +10,7 @@ import { PersonMark } from "../components/PersonMark";
 import { useAdminSession } from "../lib/useAdminSession";
 import { CODE_LENGTH } from "../lib/adminLogin";
 
-// Admin sign-in, in two steps: a username gets an 8-digit code pushed to
+// Admin sign-in, in two steps: a username gets a 6-digit code pushed to
 // the phone registered to it, then that code gets typed back here. A
 // verified code sets the session cookie and drops you into the panel.
 //
@@ -178,9 +178,12 @@ export function AdminLoginPage() {
       {step === "code" && (
         <>
           <p className="mt-3 text-center text-muted">
-            We pushed an {CODE_LENGTH}-digit code to the phone registered to{" "}
-            <span className="font-medium break-words text-ink">{username.trim()}</span>. It
-            expires in 10 minutes.
+            {/* Worded so the length never needs an article: "an 8-digit" but
+                "a 6-digit" — hardcoding either reads wrong the day it changes,
+                which is exactly what happened going from 8 to 6. */}
+            We pushed a code to the phone registered to{" "}
+            <span className="font-medium break-words text-ink">{username.trim()}</span> —{" "}
+            {CODE_LENGTH} digits, and it expires in 10 minutes.
           </p>
 
           <form onSubmit={submitCode} className="mt-8 space-y-4">

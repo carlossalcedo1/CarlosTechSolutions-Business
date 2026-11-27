@@ -40,7 +40,7 @@ class AdminPasskeyRequest(BaseModel):
 
 
 class AdminVerifyRequest(BaseModel):
-    """Step two: the code that was pushed. Length is pinned to the 8 digits
+    """Step two: the code that was pushed. Length is pinned to the 6 digits
     login_codes.py generates, so a wrong-shaped guess is rejected by
     validation before it costs a PBKDF2 round."""
 

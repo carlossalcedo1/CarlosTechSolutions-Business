@@ -22,6 +22,16 @@ from backend.app.login_codes import (
 )
 
 
+def wrong(code: str) -> str:
+    """A well-formed guess guaranteed not to be `code`.
+
+    A fixed string like "000000" won't do: it's a valid 6-digit code, the
+    store issues it about one run in a million, and on that run every
+    "wrong guess" test below would fail for no visible reason.
+    """
+    return "000000" if code != "000000" else "111111"
+
+
 @pytest.fixture
 def store(tmp_path) -> LoginCodeStore:
     return LoginCodeStore(tmp_path / "login_codes.json")
@@ -30,17 +40,17 @@ def store(tmp_path) -> LoginCodeStore:
 # --- code generation --------------------------------------------------------
 
 
-def test_codes_are_eight_digits():
+def test_codes_are_six_digits():
     for _ in range(200):
         code = generate_code()
-        assert len(code) == CODE_LENGTH == 8
+        assert len(code) == CODE_LENGTH == 6
         assert code.isdigit()
 
 
 def test_leading_zeros_are_kept():
-    # f-string zero padding, not str(int) — a code of 00412345 has to stay
-    # 8 characters or it won't match what the user was shown.
-    assert all(len(f"{n:08d}") == 8 for n in (0, 7, 412345))
+    # f-string zero padding, not str(int) — a code of 004123 has to stay
+    # 6 characters or it won't match what the user was shown.
+    assert all(len(f"{n:0{CODE_LENGTH}d}") == CODE_LENGTH for n in (0, 7, 4123))
 
 
 def test_codes_are_not_repeated_trivially():
@@ -88,13 +98,14 @@ def test_issuing_again_kills_the_first_code(store):
 
 
 def test_wrong_code_is_rejected(store):
-    store.issue("cmsal06")
-    assert store.verify("cmsal06", "00000000") is False
+    code = store.issue("cmsal06")
+    assert store.verify("cmsal06", wrong(code)) is False
 
 
 def test_unknown_username_is_rejected(store):
-    store.issue("cmsal06")
-    assert store.verify("nobody", "00000000") is False
+    code = store.issue("cmsal06")
+    # The right code, under the wrong name — it must not cross over.
+    assert store.verify("nobody", code) is False
 
 
 def test_another_users_code_does_not_work(store):
@@ -104,7 +115,7 @@ def test_another_users_code_does_not_work(store):
 
 
 def test_verify_without_ever_issuing(store):
-    assert store.verify("cmsal06", "12345678") is False
+    assert store.verify("cmsal06", "123456") is False
 
 
 # --- attempt cap ------------------------------------------------------------
@@ -113,7 +124,7 @@ def test_verify_without_ever_issuing(store):
 def test_too_many_wrong_guesses_destroys_the_code(store):
     code = store.issue("cmsal06")
     for _ in range(MAX_ATTEMPTS):
-        assert store.verify("cmsal06", "00000000") is False
+        assert store.verify("cmsal06", wrong(code)) is False
     # The real code is now worthless too — the code is destroyed, not just
     # the attempt rejected, so a guesser can't request nothing and keep going.
     assert store.verify("cmsal06", code) is False
@@ -126,14 +137,14 @@ def test_attempts_persist_across_instances(tmp_path):
     path = tmp_path / "login_codes.json"
     code = LoginCodeStore(path).issue("cmsal06")
     for _ in range(MAX_ATTEMPTS):
-        LoginCodeStore(path).verify("cmsal06", "00000000")
+        LoginCodeStore(path).verify("cmsal06", wrong(code))
     assert LoginCodeStore(path).verify("cmsal06", code) is False
 
 
 def test_a_correct_guess_within_the_cap_still_works(store):
     code = store.issue("cmsal06")
     for _ in range(MAX_ATTEMPTS - 1):
-        store.verify("cmsal06", "00000000")
+        store.verify("cmsal06", wrong(code))
     assert store.verify("cmsal06", code) is True
 
 
@@ -248,8 +259,8 @@ def test_verify_accepts_the_pushed_code(client, sent):
 
 
 def test_verify_rejects_a_wrong_code(client, sent):
-    _login_and_get_code(client, sent)
-    res = client.post("/api/admin/verify", json={"username": "cmsal06", "code": "00000000"})
+    code = _login_and_get_code(client, sent)
+    res = client.post("/api/admin/verify", json={"username": "cmsal06", "code": wrong(code)})
     assert res.status_code == 400
     assert res.json()["detail"] == "That code isn't valid. Request a new one."
 
@@ -261,7 +272,7 @@ def test_verify_burns_the_code(client, sent):
     assert res.status_code == 400
 
 
-@pytest.mark.parametrize("code", ["1234567", "123456789", "abcdefgh", "1234 567", ""])
+@pytest.mark.parametrize("code", ["12345", "1234567", "abcdef", "123 45", ""])
 def test_wrong_shaped_codes_are_rejected_by_validation(client, code):
     # 422, not 400: these never reach the store, so a malformed guess
     # doesn't cost a PBKDF2 round or an attempt from the budget.
@@ -272,7 +283,7 @@ def test_wrong_shaped_codes_are_rejected_by_validation(client, code):
 def test_verify_is_rate_limited(client, sent):
     code = _login_and_get_code(client, sent)
     for _ in range(4):
-        client.post("/api/admin/verify", json={"username": "cmsal06", "code": "00000000"})
+        client.post("/api/admin/verify", json={"username": "cmsal06", "code": wrong(code)})
     res = client.post("/api/admin/verify", json={"username": "cmsal06", "code": code})
     assert res.status_code == 429
 

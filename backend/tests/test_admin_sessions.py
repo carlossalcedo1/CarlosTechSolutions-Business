@@ -13,6 +13,7 @@ import time
 
 import pytest
 
+from backend.app.login_codes import CODE_LENGTH
 from backend.app.sessions import COOKIE_NAME, SESSION_DAYS, SessionStore
 
 DAY = 24 * 60 * 60
@@ -161,7 +162,9 @@ def _sign_in(client, sent, username="cmsal06"):
     """Drive the real two-step flow and leave the client holding a cookie."""
     client.post("/api/admin/login", json={"username": username})
     message = sent["pushes"][-1]["message"]
-    code = "".join(c for c in message if c.isdigit())[:8]
+    # The push reads "Your sign-in code is 123456. It expires in 10
+    # minutes." — the slice stops before the 10.
+    code = "".join(c for c in message if c.isdigit())[:CODE_LENGTH]
     res = client.post("/api/admin/verify", json={"username": username, "code": code})
     assert res.status_code == 200
     return res
@@ -230,7 +233,12 @@ def test_logout_kills_the_row_not_just_the_cookie(client, sent, session_store):
 
 def test_a_wrong_code_grants_no_session(client, sent):
     client.post("/api/admin/login", json={"username": "cmsal06"})
-    client.post("/api/admin/verify", json={"username": "cmsal06", "code": "00000000"})
+    code = "".join(c for c in sent["pushes"][-1]["message"] if c.isdigit())[:CODE_LENGTH]
+    guess = "000000" if code != "000000" else "111111"
+    res = client.post("/api/admin/verify", json={"username": "cmsal06", "code": guess})
+    # 400, not 422: the guess has to be well-formed, or this would only be
+    # testing the length check and never the wrong-code path it's named for.
+    assert res.status_code == 400
     assert client.get("/api/admin/me").json() == {"user": None}
 
 

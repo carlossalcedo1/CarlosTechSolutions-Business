@@ -4,4 +4,4 @@
 // there's one obvious place to change if the length ever moves, and so the
 // input's maxLength, the placeholder and the submit guard can't drift apart
 // from each other.
-export const CODE_LENGTH = 8;
+export const CODE_LENGTH = 6;

@@ -60,7 +60,7 @@ _code_limiter = RateLimiter(max_requests=10, window_seconds=60)
 # Admin sign-in, deliberately the tightest budget in the file. It guards two
 # different things at once: the login route answers whether a username is an
 # admin, so an open budget there is a free list of who to target; and the
-# verify route is the only thing between a guesser and an 8-digit code. Five
+# verify route is the only thing between a guesser and a 6-digit code. Five
 # a minute is unmissable for a real person typing a code off their phone and
 # nowhere near enough to sweep anything.
 _admin_limiter = RateLimiter(max_requests=5, window_seconds=60)
