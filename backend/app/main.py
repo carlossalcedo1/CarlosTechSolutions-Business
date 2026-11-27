@@ -335,7 +335,13 @@ def contact(body: ContactRequest, request: Request, settings: Settings = Depends
     return OkResponse()
 
 
-_SERVICE_TITLES = {"unlock": "Unlock", "repair": "Repair", "sell": "Sell", "contact": "Contact"}
+_SERVICE_TITLES = {
+    "unlock": "Unlock",
+    "repair": "Repair",
+    "sell": "Sell",
+    "contact": "Contact",
+    "tutoring": "Tutoring",
+}
 
 
 def _one_line(text: str) -> str:

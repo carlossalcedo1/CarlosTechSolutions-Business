@@ -150,7 +150,7 @@ export function submitTradeIn(payload: TradeInPayload) {
 
 /** Send Request on the Services page — pushed to the admin's phone. */
 export interface ServiceRequestPayload {
-  service: "unlock" | "repair" | "sell" | "contact";
+  service: "unlock" | "repair" | "sell" | "contact" | "tutoring";
   device: string;
   service_requested?: string;
   details: string[];

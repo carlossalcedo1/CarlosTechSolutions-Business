@@ -15,6 +15,7 @@ import { ConditionsPage } from "./pages/ConditionsPage";
 import { TermsPage } from "./pages/TermsPage";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { HelpCenterPage } from "./pages/HelpCenterPage";
+import { TutoringPage } from "./pages/TutoringPage";
 import { PromptworksPage } from "./pages/PromptworksPage";
 import { RhinoTradePage } from "./pages/RhinoTradePage";
 import { AdminLoginPage } from "./pages/AdminLoginPage";
@@ -55,6 +56,7 @@ export function App() {
           <Route path="checkout/success" element={<CheckoutSuccessPage />} />
           <Route path="checkout/cancelled" element={<CheckoutCancelledPage />} />
           <Route path="help" element={<HelpCenterPage />} />
+          <Route path="tutoring" element={<TutoringPage />} />
           <Route path="returns" element={<ReturnPolicyPage />} />
           <Route path="conditions" element={<ConditionsPage />} />
           <Route path="terms" element={<TermsPage />} />

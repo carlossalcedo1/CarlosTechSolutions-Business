@@ -19,7 +19,7 @@ const SHOP_NAV: NavItem[] = [
   { to: "/services", label: "Service" },
   { to: "/about", label: "About" },
   { to: "/contact", label: "Contact" },
-  { to: "/help", label: "FAQ" },
+  { to: "/help", label: "Help Center" },
 ];
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -53,9 +53,12 @@ export function Header({ nav = SHOP_NAV }: { nav?: NavItem[] }) {
               <MissionMark className="h-3.5 w-3.5" />
               Our Mission
             </Link>
-            <Link to="/help" className="hover:text-brand">
-              <span className="sm:hidden">Help?</span>
-              <span className="hidden sm:inline">Need help?</span>
+            {/* Help moved to the main nav as "Help Center"; this slot is
+                the way in to tutoring, which the flyers' QR codes also
+                point at (/tutoring). */}
+            <Link to="/tutoring" className="hover:text-brand">
+              <span className="sm:hidden">Tutoring</span>
+              <span className="hidden sm:inline">Tutoring Services</span>
             </Link>
           </div>
           {/* Right-hand group mirrors the left one — same flex, same gap,
@@ -105,7 +108,7 @@ export function Header({ nav = SHOP_NAV }: { nav?: NavItem[] }) {
               ) : (
                 <>
                   <PersonMark className="h-3.5 w-3.5" />
-                  {/* Label drops below sm, same trick as "Need help?" above:
+                  {/* Label drops below sm, same trick as "Tutoring Services" above:
                       the icon alone is still a 14px-plus tap target, and the
                       row went to two lines on a phone with it in. */}
                   <span className="hidden sm:inline">Log in</span>

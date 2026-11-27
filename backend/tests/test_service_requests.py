@@ -110,3 +110,24 @@ def test_a_contact_needs_a_message_and_the_rest_need_a_device(client, sent):
     assert client.post("/api/service-request", json=empty).status_code == 422
     assert client.post("/api/service-request", json={**REPAIR, "device": ""}).status_code == 422
     assert sent["pushes"] == []
+
+
+def test_tutoring_is_a_message_and_a_phone(client, sent):
+    body = {
+        "service": "tutoring",
+        "details": ["Message: 10th grade, Algebra 2, weekday evenings on Zoom"],
+        "phone": "305-763-2541",
+    }
+    assert client.post("/api/service-request", json=body).status_code == 200
+    push = sent["pushes"][0]
+    assert push["title"] == "Request: Tutoring"
+    assert push["message"].split("\n") == [
+        "Message: 10th grade, Algebra 2, weekday evenings on Zoom",
+        "Phone: (305) 763-2541",
+    ]
+
+
+def test_tutoring_without_a_message_is_rejected(client, sent):
+    body = {"service": "tutoring", "details": ["  "], "phone": "305-763-2541"}
+    assert client.post("/api/service-request", json=body).status_code == 422
+    assert sent["pushes"] == []

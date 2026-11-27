@@ -78,6 +78,10 @@ class _Honeypot(BaseModel):
     website: str = ""
 
 
+# Request kinds that are just a message and a phone number, no device.
+_MESSAGE_ONLY = ("contact", "tutoring")
+
+
 class ServiceRequest(_Honeypot):
     """Send Request from the Services page: what they want done, to which
     device, and a phone number to reach them at. Pushed to the admin's
@@ -88,9 +92,9 @@ class ServiceRequest(_Honeypot):
     that runs to pages is spam, not a customer.
     """
 
-    # "contact" is the Contact page: a message and nothing else, so it's
-    # the one kind without a device.
-    service: Literal["unlock", "repair", "sell", "contact"]
+    # "contact" is the Contact page and "tutoring" the Tutoring page: a
+    # message and nothing else, so they're the two kinds without a device.
+    service: Literal["unlock", "repair", "sell", "contact", "tutoring"]
     device: str = Field(default="", max_length=120)
     service_requested: str = Field(default="", max_length=120)
     details: list[str] = Field(default_factory=list, max_length=12)
@@ -112,9 +116,9 @@ class ServiceRequest(_Honeypot):
         # the site. Sell has no such question — its answers are the details.
         if self.service in ("repair", "unlock") and not self.service_requested.strip():
             raise ValueError("Choose the service you need.")
-        if self.service != "contact" and not self.device.strip():
+        if self.service not in _MESSAGE_ONLY and not self.device.strip():
             raise ValueError("Choose your device.")
-        if self.service == "contact" and not any(d.strip() for d in self.details):
+        if self.service in _MESSAGE_ONLY and not any(d.strip() for d in self.details):
             raise ValueError("Write a message.")
         return self
 
