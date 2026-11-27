@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { MissionMark } from "./MissionMark";
 import { PersonMark } from "./PersonMark";
+import { Logo } from "./Logo";
 import { useAdminSession } from "../lib/useAdminSession";
 
 export type NavItem = {
@@ -144,12 +145,10 @@ export function Header({ nav = SHOP_NAV }: { nav?: NavItem[] }) {
           the *row*, not just centered in whatever space is left over. */}
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-4 py-4 sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-x-8 sm:gap-y-3">
         <Link to="/" className="flex shrink-0 items-center gap-2">
-          {/* The real mark at last: the NexFix N with the wrench knocked
-              out of its right stroke. Vector rather than a PNG on purpose —
-              this same file is the favicon, and a downscaled raster turns to
-              mush at 16px in a browser tab. The print masters, including the
-              full lockup for business cards, live in /brand. */}
-          <img src="/logo.svg" alt="" className="h-8 w-8" />
+          {/* The NexFix N with the wrench knocked out of its right stroke,
+              shading and all — see Logo.tsx for why it's a raster here and
+              a vector in the browser tab. Masters live in /brand. */}
+          <Logo />
           <span className="text-2xl font-bold tracking-tight text-ink">NexFix</span>
         </Link>
 
@@ -168,7 +167,7 @@ export function Header({ nav = SHOP_NAV }: { nav?: NavItem[] }) {
             is already wrapping, and reserving a matching logo-width slot
             would just steal space the nav needs to wrap into. */}
         <div aria-hidden className="hidden shrink-0 items-center gap-2 opacity-0 sm:flex">
-          <img src="/logo.svg" alt="" className="h-8 w-8" />
+          <Logo />
           <span className="text-2xl font-bold tracking-tight">NexFix</span>
         </div>
       </div>

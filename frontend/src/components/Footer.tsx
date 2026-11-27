@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Logo } from "./Logo";
 import { INQUIRY_EMAIL, CONTACT_PHONE, EBAY_PROFILE_URL } from "../lib/constants";
 import { MissionMark } from "./MissionMark";
 
@@ -51,7 +52,7 @@ export function Footer() {
         <div>
           <Link to="/" className="flex items-center gap-3">
             {/* Same mark as the header — see Header.tsx's comment. */}
-            <img src="/logo.svg" alt="" className="h-[25px] w-[25px]" />
+            <Logo className="h-[25px] w-[25px]" />
             <span className="text-xl font-bold tracking-tight text-ink">NexFix</span>
           </Link>
 
