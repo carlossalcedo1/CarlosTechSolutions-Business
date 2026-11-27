@@ -149,7 +149,17 @@ list them in the item's `"images"` in `scripts/items.json`, and deploy.
 ## Code-only listings (private sales)
 
 For a buyer you're dealing with elsewhere (eBay, Marketplace, text) who
-should pay through the site instead. Run on the server:
+should pay through the site instead.
+
+**Easiest: the admin panel's Codes tab.** Same fields as the script below,
+photos from your phone, and the code is copied to your clipboard the moment
+it exists. Unlike the List tab it **works on the live server** — codes and
+their photos live on the API's data volume, so there's nothing to deploy.
+Photos for panel-made codes are kept beside `codes.json` and served from
+`/api/code-photos/…`; the script's go into `frontend/public/items/` as
+before. The product page doesn't care which.
+
+Or run the script on the server:
 
 ```bash
 python3 scripts/gen_code.py              # create: same prompts as add_item, minus category

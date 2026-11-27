@@ -22,6 +22,7 @@ from .emails import buyer_confirmation, sale_alert, sale_push
 from .mailer import send_email
 from .login_codes import LoginCodeStore, normalize_username
 from .notifier import PushError, send_push, send_push_strict
+from .orders import OrderStore, order_from_session
 from .passkeys import PasskeyStore
 from .payments import create_checkout_session, verify_webhook
 from .ratelimit import RateLimiter, client_ip
@@ -78,6 +79,7 @@ async def lifespan(app: FastAPI):
     app.state.login_code_store = LoginCodeStore(settings.login_codes_path)
     app.state.passkey_store = PasskeyStore(settings.passkeys_path)
     app.state.session_store = SessionStore(settings.sessions_path)
+    app.state.order_store = OrderStore(settings.orders_path)
     logger.info("Loaded %d catalog items", len(items))
     yield
 
@@ -214,6 +216,19 @@ async def stripe_webhook(request: Request, settings: Settings = Depends(get_sett
         if item is None:
             logger.warning("checkout.session.completed with unknown item_id=%r code=%r", item_id, code)
         else:
+            # Kept for the admin panel's Orders tab. Wrapped for the same
+            # reason as the push further down: the sale is already recorded
+            # at this point and mark_processed() hasn't run, so anything that
+            # escapes is a 500, a Stripe retry, and the same sale counted
+            # twice. A missing row in the Orders tab is the acceptable
+            # failure — the sale-alert email still has everything needed to
+            # ship. record() is a no-op for an order it already has, so a
+            # genuine retry doesn't reset one you've marked shipped either.
+            try:
+                request.app.state.order_store.record(order_from_session(session, item, code))
+            except Exception:
+                logger.exception("Couldn't record the order for session %r", session.get("id"))
+
             buyer_email = (session.get("customer_details") or {}).get("email")
             if buyer_email:
                 subject, body_html, body_text = buyer_confirmation(
@@ -493,9 +508,17 @@ def require_admin(request: Request) -> str:
 # Inventory management for the admin panel. require_admin goes on the whole
 # router here rather than on each route inside it, so a route added there
 # later is guarded whether or not whoever writes it remembers to.
+from .admin_codes import public_router as code_photos_router  # noqa: E402
+from .admin_codes import router as admin_codes_router  # noqa: E402
 from .admin_inventory import router as admin_inventory_router  # noqa: E402
+from .admin_orders import router as admin_orders_router  # noqa: E402
 
-app.include_router(admin_inventory_router, dependencies=[Depends(require_admin)])
+for _router in (admin_inventory_router, admin_orders_router, admin_codes_router):
+    app.include_router(_router, dependencies=[Depends(require_admin)])
+
+# The one admin-made thing that's public: a code's photos, which the buyer
+# holding the code has to be able to load. See admin_codes.py.
+app.include_router(code_photos_router)
 
 
 @app.get("/api/admin/me", response_model=AdminMeResponse)

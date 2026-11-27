@@ -85,6 +85,13 @@ class Settings(BaseSettings):
     # Live admin sessions (app/sessions.py). Deleting this file signs
     # everyone out, which is the blunt version of revoke_all.
     sessions_path: Path = _DEFAULT_DATA_DIR / "sessions.json"
+    # Paid orders and their shipping state (app/orders.py), written by the
+    # Stripe webhook.
+    orders_path: Path = _DEFAULT_DATA_DIR / "orders.json"
+    # Photos for codes made in the admin panel (app/admin_codes.py). On the
+    # data volume beside codes.json, which is what lets the panel make a
+    # code with photos on the live server without a deploy.
+    code_photos_dir: Path = _DEFAULT_DATA_DIR / "code_photos"
 
     # Where the admin panel's inventory editing reads and writes. These
     # default to the repo's own files — the same ones scripts/add_item.py

@@ -299,3 +299,85 @@ export function getDeployStatus() {
 export function startDeploy() {
   return send<DeployStatus>("/admin/deploy", { method: "POST" });
 }
+
+// --- Admin orders --------------------------------------------------------------
+//
+// Recorded by the Stripe webhook (backend/app/orders.py), so only orders
+// placed since that went live are here — earlier ones are in Stripe.
+
+export type ShippingAddress = {
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+};
+
+export type AdminOrder = {
+  id: string;
+  /** Unix seconds. */
+  createdAt: number;
+  itemId: string | null;
+  itemName: string | null;
+  code: string | null;
+  customerName: string | null;
+  customerEmail: string | null;
+  amountCents: number | null;
+  shippingName: string | null;
+  shippingAddress: ShippingAddress | null;
+  status: "paid" | "shipped";
+  shippedAt: number | null;
+  trackingNumber: string | null;
+  /** USPS tracking page, built server-side so the format lives in one place. */
+  trackingUrl: string | null;
+};
+
+export function getRecentOrders() {
+  return send<{ orders: AdminOrder[]; total: number; olderUnshipped: number }>("/admin/orders");
+}
+
+export function getOrder(id: string) {
+  return send<AdminOrder>(`/admin/orders/${encodeURIComponent(id)}`);
+}
+
+export function markOrderShipped(id: string) {
+  return post<AdminOrder>(`/admin/orders/${encodeURIComponent(id)}/shipped`, {});
+}
+
+export function setOrderTracking(id: string, trackingNumber: string) {
+  return send<AdminOrder>(`/admin/orders/${encodeURIComponent(id)}/tracking`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ trackingNumber }),
+  });
+}
+
+// --- Admin codes ---------------------------------------------------------------
+//
+// scripts/gen_code.py as a form — see backend/app/admin_codes.py. Codes live
+// on the API's data volume, so unlike List this works on the live server.
+
+export type AdminCode = {
+  code: string;
+  status: "active" | "sold" | "cancelled" | "expired";
+  /** The table's split: sold, cancelled and expired all mean the code no
+   *  longer opens anything. */
+  active: boolean;
+  createdAt: string;
+  expiresAt: string;
+  soldAt: string | null;
+  item: Omit<Item, "category" | "featured" | "dateAdded">;
+};
+
+export function getCodes() {
+  return send<{ codes: AdminCode[] }>("/admin/codes");
+}
+
+export function createCode(form: FormData) {
+  return postForm<AdminCode>("/admin/codes", form);
+}
+
+export function cancelCode(code: string) {
+  return post<AdminCode>(`/admin/codes/${encodeURIComponent(code)}/cancel`, {});
+}

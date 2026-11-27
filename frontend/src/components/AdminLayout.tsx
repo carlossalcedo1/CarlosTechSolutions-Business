@@ -18,6 +18,7 @@ const ADMIN_NAV: NavItem[] = [
   // "active" on every admin route, and Home would always look selected.
   { to: "/", label: "Home", icon: <HomeMark className="h-4 w-4" />, end: true },
   { to: "/admin/list", label: "List" },
+  { to: "/admin/orders", label: "Orders" },
   { to: "/admin/codes", label: "Codes" },
   { to: "/admin/settings", label: "Settings" },
 ];

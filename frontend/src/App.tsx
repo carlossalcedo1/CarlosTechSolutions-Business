@@ -29,6 +29,9 @@ import { CreateListingPage } from "./pages/admin/list/CreateListingPage";
 import { PickListingPage } from "./pages/admin/list/PickListingPage";
 import { EditListingPage } from "./pages/admin/list/EditListingPage";
 import { DeleteListingPage } from "./pages/admin/list/DeleteListingPage";
+import { AdminOrdersPage } from "./pages/admin/orders/AdminOrdersPage";
+import { AdminOrderTrackingPage } from "./pages/admin/orders/AdminOrderTrackingPage";
+import { NewCodePage } from "./pages/admin/codes/NewCodePage";
 
 export function App() {
   return (
@@ -80,7 +83,10 @@ export function App() {
           <Route path="list/edit/:id" element={<EditListingPage />} />
           <Route path="list/delete" element={<PickListingPage key="delete" mode="delete" />} />
           <Route path="list/delete/:id" element={<DeleteListingPage />} />
+          <Route path="orders" element={<AdminOrdersPage />} />
+          <Route path="orders/:id/tracking" element={<AdminOrderTrackingPage />} />
           <Route path="codes" element={<AdminCodesPage />} />
+          <Route path="codes/new" element={<NewCodePage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="*" element={<Navigate to="/admin/list" replace />} />
         </Route>

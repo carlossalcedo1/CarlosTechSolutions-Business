@@ -25,6 +25,7 @@ from backend.app.codes import CodeStore
 from backend.app.config import Settings, get_settings
 from backend.app.models import Item
 from backend.app.login_codes import LoginCodeStore
+from backend.app.orders import OrderStore
 from backend.app.passkeys import PasskeyStore
 from backend.app.sessions import SessionStore
 from backend.app.sold_store import SoldStore
@@ -60,6 +61,8 @@ def settings(tmp_path) -> Settings:
         login_codes_path=tmp_path / "login_codes.json",
         passkeys_path=tmp_path / "passkeys.json",
         sessions_path=tmp_path / "sessions.json",
+        orders_path=tmp_path / "orders.json",
+        code_photos_dir=tmp_path / "code_photos",
         # Inventory editing defaults to the repo's real items.json, photos
         # and sold log. Every one of these has to be redirected, or a test
         # that creates a listing writes it into the developer's actual
@@ -98,6 +101,11 @@ def passkey_store(settings) -> PasskeyStore:
 @pytest.fixture
 def session_store(settings) -> SessionStore:
     return SessionStore(settings.sessions_path)
+
+
+@pytest.fixture
+def order_store(settings) -> OrderStore:
+    return OrderStore(settings.orders_path)
 
 
 @pytest.fixture
@@ -214,6 +222,7 @@ def client(
     login_code_store,
     passkey_store,
     session_store,
+    order_store,
 ):
     """TestClient with the app's startup state swapped for the fixtures.
 
@@ -237,5 +246,6 @@ def client(
         main_module.app.state.login_code_store = login_code_store
         main_module.app.state.passkey_store = passkey_store
         main_module.app.state.session_store = session_store
+        main_module.app.state.order_store = order_store
         yield test_client
     main_module.app.dependency_overrides.clear()

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { AdminPageHeader } from "../../../components/AdminLayout";
 import { DeployPanel } from "../../../components/admin/DeployPanel";
 import {
@@ -10,6 +10,7 @@ import {
   inputClass,
 } from "../../../components/admin/ui";
 import { ProductCard } from "../../../components/ProductCard";
+import { PhotoPicker, imageReady, usePhotoPicker } from "../../../components/admin/PhotoPicker";
 import { CATEGORIES, CONDITIONS } from "../../../lib/constants";
 import { createListing, ApiError, type AdminItem } from "../../../lib/api";
 import type { Category, Condition } from "../../../types";
@@ -19,10 +20,6 @@ import type { Category, Condition } from "../../../types";
 // side validation and photo conversion, because the API runs the CLI's own
 // code. Built for a phone first: one column, 16px inputs, native selects,
 // and photos straight from the camera roll.
-
-const MAX_PHOTOS = 10;
-
-type Photo = { file: File; url: string; key: string };
 
 export function CreateListingPage() {
   const [category, setCategory] = useState<Category>("Phones");
@@ -36,12 +33,11 @@ export function CreateListingPage() {
   const [specLine, setSpecLine] = useState("");
   const [specs, setSpecs] = useState("");
   const [featured, setFeatured] = useState(false);
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const picker = usePhotoPicker();
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<AdminItem | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   // Same rule as build_name() in backend/app/inventory.py.
   const title = useMemo(
@@ -49,44 +45,10 @@ export function CreateListingPage() {
     [brand, model, storage],
   );
 
-  // Object URLs hold the file in memory until revoked; leak enough of these
-  // on a phone and the tab gets killed. Revoked one at a time on removal and
-  // the rest on unmount — NOT in an effect keyed on `photos`, whose cleanup
-  // would revoke every URL still on screen each time a photo was added or
-  // reordered, since the new array reuses the same ones.
-  const photosRef = useRef(photos);
-  photosRef.current = photos;
-  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
-
-  function addPhotos(list: FileList | null) {
-    if (!list) return;
-    const room = MAX_PHOTOS - photos.length;
-    const incoming = Array.from(list).slice(0, room).map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-      key: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
-    }));
-    if (list.length > room) {
-      setError(`Only ${MAX_PHOTOS} photos fit — kept the first ${room}.`);
-    }
-    setPhotos((prev) => [...prev, ...incoming]);
-    // Reset so picking the same photo again still fires onChange.
-    if (fileInput.current) fileInput.current.value = "";
-  }
-
-  function removePhoto(key: string) {
-    setPhotos((prev) => {
-      const gone = prev.find((p) => p.key === key);
-      if (gone) URL.revokeObjectURL(gone.url);
-      return prev.filter((p) => p.key !== key);
-    });
-  }
-
   /** Back to a blank form, keeping category, brand and condition — the
    *  next device in a batch is usually the same kind as the last. */
   function startAnother() {
-    photos.forEach((p) => URL.revokeObjectURL(p.url));
-    setPhotos([]);
+    picker.clear();
     setModel("");
     setStorage("");
     setInventoryId("");
@@ -98,13 +60,6 @@ export function CreateListingPage() {
     setError(null);
     setCreated(null);
     window.scrollTo({ top: 0 });
-  }
-
-  function makeCover(key: string) {
-    setPhotos((prev) => {
-      const chosen = prev.find((p) => p.key === key);
-      return chosen ? [chosen, ...prev.filter((p) => p.key !== key)] : prev;
-    });
   }
 
   async function submit(e: FormEvent) {
@@ -125,9 +80,7 @@ export function CreateListingPage() {
     form.set("specLine", specLine);
     form.set("specs", specs);
     form.set("featured", featured ? "true" : "false");
-    // Appended in display order: the server numbers them 1.jpg, 2.jpg… in
-    // the order they arrive, and 1.jpg is the shop card's photo.
-    photos.forEach((p) => form.append("photos", p.file, p.file.name));
+    picker.appendTo(form);
 
     try {
       const item = await createListing(form);
@@ -314,62 +267,7 @@ export function CreateListingPage() {
           Feature on the homepage
         </label>
 
-        <section>
-          <p className="text-sm font-medium text-ink">Photos</p>
-          <p className="mt-1 text-xs text-muted">
-            The first photo is the one on shop cards. HEIC is fine — everything is converted
-            to JPEG, turned upright and resized.
-          </p>
-
-          {photos.length > 0 && (
-            <ol className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {photos.map((p, i) => (
-                <li key={p.key} className="relative overflow-hidden rounded-lg border border-hairline">
-                  <PhotoThumb photo={p} />
-                  <span className="absolute left-1.5 top-1.5 rounded-full bg-ink/80 px-2 py-0.5 text-[11px] font-medium text-white">
-                    {i === 0 ? "Cover" : i + 1}
-                  </span>
-                  <div className="flex border-t border-hairline text-xs">
-                    {i > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => makeCover(p.key)}
-                        className="flex-1 py-2 text-ink hover:bg-black/5"
-                      >
-                        Make cover
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(p.key)}
-                      aria-label={`Remove photo ${i + 1}`}
-                      className="flex-1 py-2 text-red-700 hover:bg-red-50"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-
-          {photos.length < MAX_PHOTOS && (
-            <label className="mt-3 flex cursor-pointer items-center justify-center rounded-xl border border-dashed border-hairline px-4 py-6 text-[15px] font-medium text-ink hover:border-ink">
-              {/* No `capture` attribute on purpose: it forces the camera
-                  open and skips the photo library, and the photos are
-                  usually already taken. Without it a phone offers both. */}
-              <input
-                ref={fileInput}
-                type="file"
-                accept="image/*,.heic,.heif"
-                multiple
-                onChange={(e) => addPhotos(e.target.files)}
-                className="sr-only"
-              />
-              {photos.length === 0 ? "Add photos" : "Add more photos"}
-            </label>
-          )}
-        </section>
+        <PhotoPicker picker={picker} coverHint="The first photo is the one on shop cards." />
 
         <ErrorNote error={error} />
 
@@ -378,53 +276,5 @@ export function CreateListingPage() {
         </PillButton>
       </form>
     </div>
-  );
-}
-
-/**
- * Wait until a just-saved photo is actually being served, giving up after
- * about three seconds either way.
- *
- * Vite's dev server keeps a list of public/ files and only learns about a
- * new one from its file watcher, which lags the write. Ask for the photo
- * in the meantime and Vite answers 200 with index.html — its SPA fallback
- * — so the "Listed" card showed a broken image for a photo that had saved
- * perfectly. (Measured: text/html straight after the write, image/jpeg a
- * second later.) A failed <img> load isn't cached, so retrying is enough.
- */
-function imageReady(src: string, attempts = 12, delayMs = 250): Promise<void> {
-  return new Promise((resolve) => {
-    let tries = 0;
-    const attempt = () => {
-      const img = new Image();
-      img.onload = () => resolve();
-      img.onerror = () => {
-        if (++tries >= attempts) resolve();
-        else setTimeout(attempt, delayMs);
-      };
-      img.src = src;
-    };
-    attempt();
-  });
-}
-
-/** A preview, or the filename when the browser can't draw it — desktop
- *  Chrome can't render HEIC, though the server converts it fine. */
-function PhotoThumb({ photo }: { photo: Photo }) {
-  const [broken, setBroken] = useState(false);
-  if (broken) {
-    return (
-      <div className="flex aspect-square items-center justify-center bg-surface p-2 text-center text-[11px] break-all text-muted">
-        {photo.file.name}
-      </div>
-    );
-  }
-  return (
-    <img
-      src={photo.url}
-      alt=""
-      onError={() => setBroken(true)}
-      className="aspect-square w-full bg-surface object-cover"
-    />
   );
 }
