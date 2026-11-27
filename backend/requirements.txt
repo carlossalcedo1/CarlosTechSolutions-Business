@@ -12,3 +12,7 @@ uvicorn[standard]>=0.30
 python-multipart>=0.0.9
 stripe>=10.12
 resend>=2.4
+# zoneinfo needs a tz database and python:*-slim ships none, so ZoneInfo()
+# works locally (macOS/Debian have /usr/share/zoneinfo) and raises in the
+# container. This wheel is the database, so both behave the same.
+tzdata>=2024.2

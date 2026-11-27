@@ -95,9 +95,23 @@ def make_session(**overrides) -> dict:
     return session
 
 
-def make_event(session: dict, *, event_id: str = "evt_test_1", event_type: str = "checkout.session.completed") -> dict:
+# 17:30 UTC = 12:30 in Gainesville (EST), so a test can tell a converted
+# time from an unconverted one at a glance.
+NOV_26_1730_UTC = 1764178200
+
+
+def make_event(
+    session: dict,
+    *,
+    event_id: str = "evt_test_1",
+    event_type: str = "checkout.session.completed",
+    created: int | None = NOV_26_1730_UTC,
+) -> dict:
+    """`created` is when Stripe generated the event, i.e. when the payment
+    completed — this is where the push's sale time comes from."""
     return {
         "id": event_id,
         "type": event_type,
+        "created": created,
         "data": {"object": FakeStripeObject(session)},
     }
